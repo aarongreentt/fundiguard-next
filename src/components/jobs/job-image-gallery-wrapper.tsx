@@ -1,4 +1,3 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server-ssr";
 import { JobImageGalleryClient } from "./job-image-gallery-client";
 import { type JobImage } from "./job-image-gallery";
 
@@ -13,23 +12,17 @@ export async function JobImageGalleryWrapper({
   isJobOwner,
   jobId,
 }: JobImageGalleryWrapperProps) {
-  const supabase = await createSupabaseServerClient();
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  // Generate public URLs server-side using Supabase client
+  // Generate public URLs manually to avoid encoding issues
   const publicUrls: Record<string, string> = {};
   
   for (const img of images) {
     try {
-      const { data } = supabase.storage
-        .from("job-images")
-        .getPublicUrl(img.storage_path);
-      
-      if (data?.publicUrl) {
-        publicUrls[img.id] = data.publicUrl;
-        console.log("[Server] Generated URL for", img.storage_path, ":", data.publicUrl);
-      } else {
-        console.warn("[Server] No public URL data for", img.storage_path);
-      }
+      // Construct the public URL manually
+      const publicUrl = `${baseUrl}/storage/v1/object/public/job-images/${img.storage_path}`;
+      publicUrls[img.id] = publicUrl;
+      console.log("[Server] Generated URL for", img.storage_path, ":", publicUrl);
     } catch (err) {
       console.error("[Server] Failed to generate URL for", img.storage_path, ":", err);
     }
