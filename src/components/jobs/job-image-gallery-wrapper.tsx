@@ -12,19 +12,17 @@ export async function JobImageGalleryWrapper({
   isJobOwner,
   jobId,
 }: JobImageGalleryWrapperProps) {
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-  // Generate public URLs manually to avoid encoding issues
+  // Generate proxy URLs through our own API instead of direct Supabase URLs
   const publicUrls: Record<string, string> = {};
   
   for (const img of images) {
     try {
-      // Construct the public URL manually
-      const publicUrl = `${baseUrl}/storage/v1/object/public/job-images/${img.storage_path}`;
-      publicUrls[img.id] = publicUrl;
-      console.log("[Server] Generated URL for", img.storage_path, ":", publicUrl);
+      // Use our own API endpoint to proxy images from Supabase
+      const proxyUrl = `/api/images/${img.storage_path}`;
+      publicUrls[img.id] = proxyUrl;
+      console.log("[Server] Generated proxy URL for", img.storage_path, ":", proxyUrl);
     } catch (err) {
-      console.error("[Server] Failed to generate URL for", img.storage_path, ":", err);
+      console.error("[Server] Failed to generate proxy URL for", img.storage_path, ":", err);
     }
   }
 
