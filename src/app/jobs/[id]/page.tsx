@@ -8,7 +8,8 @@ import { createBid, updateBidStatus, getAcceptedBidForJob } from "@/app/actions/
 import { deleteJob } from "@/app/actions/jobs";
 import { BidForm } from "@/components/bids/bid-form";
 import { BidsList, type BidRow } from "@/components/bids/bids-list";
-import { JobImageGallery, type JobImage } from "@/components/jobs/job-image-gallery";
+import { JobImageGalleryWrapper } from "@/components/jobs/job-image-gallery-wrapper";
+import { type JobImage } from "@/components/jobs/job-image-gallery";
 import { DeleteJobButton } from "@/components/jobs/delete-job-button";
 
 export default async function Page({
@@ -86,7 +87,13 @@ export default async function Page({
           </CardContent>
         </Card>
 
-        {images && images.length > 0 ? <JobImageGallery images={images as JobImage[]} /> : null}
+        {images && images.length > 0 ? (
+          <JobImageGalleryWrapper 
+            images={images as JobImage[]} 
+            isJobOwner={isJobOwner}
+            jobId={id}
+          />
+        ) : null}
 
         {canBid ? <BidForm action={createBid.bind(null, job.id)} /> : null}
         {acceptedBid && !isJobOwner ? (
