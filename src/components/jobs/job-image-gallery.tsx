@@ -10,6 +10,8 @@ export type JobImage = {
 };
 
 export async function JobImageGallery({ images }: { images: JobImage[] }) {
+  console.log("[JobImageGallery] Received images:", images);
+
   if (images.length === 0) {
     return (
       <Card>
@@ -27,22 +29,28 @@ export async function JobImageGallery({ images }: { images: JobImage[] }) {
 
   const urlsWithIds = images.map((img) => {
     try {
+      console.log("[JobImageGallery] Processing image path:", img.storage_path);
+      
       // Use public URL directly since bucket has public read access
       const { data } = supabase.storage
         .from("job-images")
         .getPublicUrl(img.storage_path);
       
-      if (data?.publicUrl) {
-        return { id: img.id, url: data.publicUrl };
+      const url = data?.publicUrl;
+      console.log("[JobImageGallery] Generated URL:", url);
+      
+      if (url) {
+        return { id: img.id, url };
       }
       return null;
     } catch (err) {
-      console.error("Error getting image URL for", img.storage_path, ":", err);
+      console.error("[JobImageGallery] Error getting image URL for", img.storage_path, ":", err);
       return null;
     }
   });
 
   const validImages = urlsWithIds.filter((item): item is { id: string; url: string } => item !== null);
+  console.log("[JobImageGallery] Valid images:", validImages);
 
   return (
     <Card>

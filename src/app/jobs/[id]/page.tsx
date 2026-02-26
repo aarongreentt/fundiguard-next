@@ -44,6 +44,8 @@ export default async function Page({
     .eq("job_id", id)
     .order("created_at", { ascending: false });
 
+  console.log("[Job Page] Images from DB for job", id, ":", images);
+
   const acceptedBid = (bids ?? []).find((b) => b.status === "accepted");
   
   const canBid = Boolean(user && user.id !== job.client_id && job.status === "open" && !acceptedBid);
