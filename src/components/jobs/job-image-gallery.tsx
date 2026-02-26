@@ -30,11 +30,6 @@ export function JobImageGallery({
   const [isZoomed, setIsZoomed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  console.log("[JobImageGallery Client] Rendered with images:", images);
-  console.log("[JobImageGallery Client] Public URLs:", publicUrls);
-  console.log("[JobImageGallery Client] Current image:", currentImage);
-  console.log("[JobImageGallery Client] Current URL:", currentUrl);
-
   if (images.length === 0) {
     return (
       <Card>
@@ -50,6 +45,11 @@ export function JobImageGallery({
 
   const currentImage = images[currentIndex];
   const currentUrl = publicUrls[currentImage.id];
+
+  console.log("[JobImageGallery Client] Rendered with images:", images);
+  console.log("[JobImageGallery Client] Public URLs:", publicUrls);
+  console.log("[JobImageGallery Client] Current image:", currentImage);
+  console.log("[JobImageGallery Client] Current URL:", currentUrl);
 
   const goToNext = () => {
     setCurrentIndex((prev) => (prev + 1) % images.length);
