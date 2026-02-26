@@ -25,19 +25,19 @@ export default async function Page() {
     .eq("pro_id", user!.id)
     .order("created_at", { ascending: false });
 
-  type BidWithJob = {
+  const typedBids = bids as Array<{
     id: string;
     amount: number | null;
     status: string | null;
     created_at: string;
     job_id: string;
     pro_id: string;
-    jobs: {
+    jobs: Array<{
       title: string;
       category: string;
       location: string;
-    };
-  };
+    }>;
+  }>;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
@@ -54,14 +54,14 @@ export default async function Page() {
             {!(bids && bids.length) ? (
               <p className="text-sm text-muted-foreground">No bids yet.</p>
             ) : (
-              (bids as BidWithJob[]).map((bid) => (
+              typedBids.map((bid) => (
                 <div key={bid.id} className="rounded-md border p-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-medium">KSh {bid.amount}</span>
                     <Badge variant={bid.status === "pending" ? "default" : "secondary"}>{bid.status}</Badge>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{bid.jobs.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{bid.jobs.category} · {bid.jobs.location}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{bid.jobs[0]?.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{bid.jobs[0]?.category} · {bid.jobs[0]?.location}</p>
                 </div>
               ))
             )}
