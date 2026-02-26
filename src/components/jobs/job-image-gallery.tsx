@@ -25,44 +25,22 @@ export async function JobImageGallery({ images }: { images: JobImage[] }) {
 
   const supabase = await createSupabaseServerClient();
 
-  const urlsWithIds = await Promise.all(
-    images.map(async (img) => {
-      try {
-        // Try signed URL with longer expiry
-        const { data, error } = await supabase.storage
-          .from("job-images")
-          .createSignedUrl(img.storage_path, 60 * 60 * 24 * 30); // 30 days expiry
-
-        if (error) {
-          console.error("Signed URL error for", img.storage_path, ":", error);
-          // Fallback to public URL
-          const { data: publicData } = supabase.storage
-            .from("job-images")
-            .getPublicUrl(img.storage_path);
-          return { id: img.id, url: publicData.publicUrl };
-        }
-
-        if (!data) {
-          console.error("No data from signed URL for", img.storage_path);
-          return null;
-        }
-
-        return { id: img.id, url: data.signedUrl };
-      } catch (err) {
-        console.error("Error getting image URL for", img.storage_path, ":", err);
-        // Fallback to public URL as last resort
-        try {
-          const { data: publicData } = supabase.storage
-            .from("job-images")
-            .getPublicUrl(img.storage_path);
-          return { id: img.id, url: publicData.publicUrl };
-        } catch (fallbackErr) {
-          console.error("Fallback public URL also failed:", fallbackErr);
-          return null;
-        }
+  const urlsWithIds = images.map((img) => {
+    try {
+      // Use public URL directly since bucket has public read access
+      const { data } = supabase.storage
+        .from("job-images")
+        .getPublicUrl(img.storage_path);
+      
+      if (data?.publicUrl) {
+        return { id: img.id, url: data.publicUrl };
       }
-    })
-  );
+      return null;
+    } catch (err) {
+      console.error("Error getting image URL for", img.storage_path, ":", err);
+      return null;
+    }
+  });
 
   const validImages = urlsWithIds.filter((item): item is { id: string; url: string } => item !== null);
 
