@@ -100,6 +100,7 @@ export function JobImageGallery({
                   className="object-cover"
                   onClick={() => setIsZoomed(!isZoomed)}
                   sizes="(max-width: 768px) 100vw, 50vw"
+                  unoptimized={true}
                 />
               </div>
 
@@ -149,6 +150,7 @@ export function JobImageGallery({
                           width={64}
                           height={64}
                           className="w-full h-full object-cover"
+                          unoptimized={true}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-200" />
