@@ -30,8 +30,10 @@ export function JobImageGallery({
   const [isZoomed, setIsZoomed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  console.log("[JobImageGallery] Rendered with images:", images);
-  console.log("[JobImageGallery] Public URLs:", publicUrls);
+  console.log("[JobImageGallery Client] Rendered with images:", images);
+  console.log("[JobImageGallery Client] Public URLs:", publicUrls);
+  console.log("[JobImageGallery Client] Current image:", currentImage);
+  console.log("[JobImageGallery Client] Current URL:", currentUrl);
 
   if (images.length === 0) {
     return (

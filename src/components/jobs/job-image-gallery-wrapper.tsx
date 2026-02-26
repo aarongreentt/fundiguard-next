@@ -1,8 +1,6 @@
-"use client";
-
-import { useTransition } from "react";
-import { JobImageGallery, type JobImage } from "./job-image-gallery";
-import { deleteJobImage } from "@/app/actions/images";
+import { createSupabaseServerClient } from "@/lib/supabase/server-ssr";
+import { JobImageGalleryClient } from "./job-image-gallery-client";
+import { type JobImage } from "./job-image-gallery";
 
 interface JobImageGalleryWrapperProps {
   images: JobImage[];
@@ -10,40 +8,41 @@ interface JobImageGalleryWrapperProps {
   jobId: string;
 }
 
-export function JobImageGalleryWrapper({
+export async function JobImageGalleryWrapper({
   images,
   isJobOwner,
   jobId,
 }: JobImageGalleryWrapperProps) {
-  const [isPending, startTransition] = useTransition();
+  const supabase = await createSupabaseServerClient();
 
-  // Generate public URLs from storage paths
+  // Generate public URLs server-side using Supabase client
   const publicUrls: Record<string, string> = {};
-  images.forEach((img) => {
-    // Construct the public URL based on Supabase standard format
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (baseUrl) {
-      publicUrls[img.id] = `${baseUrl}/storage/v1/object/public/job-images/${img.storage_path}`;
-    }
-  });
-
-  const handleDeleteImage = async (imageId: string) => {
-    startTransition(async () => {
-      try {
-        await deleteJobImage(imageId, jobId);
-      } catch (error) {
-        console.error("Failed to delete image:", error);
-        throw error;
+  
+  for (const img of images) {
+    try {
+      const { data } = supabase.storage
+        .from("job-images")
+        .getPublicUrl(img.storage_path);
+      
+      if (data?.publicUrl) {
+        publicUrls[img.id] = data.publicUrl;
+        console.log("[Server] Generated URL for", img.storage_path, ":", data.publicUrl);
+      } else {
+        console.warn("[Server] No public URL data for", img.storage_path);
       }
-    });
-  };
+    } catch (err) {
+      console.error("[Server] Failed to generate URL for", img.storage_path, ":", err);
+    }
+  }
+
+  console.log("[Server] Public URLs dict:", publicUrls);
 
   return (
-    <JobImageGallery
+    <JobImageGalleryClient
       images={images}
       publicUrls={publicUrls}
       isJobOwner={isJobOwner}
-      onDeleteImage={handleDeleteImage}
+      jobId={jobId}
     />
   );
 }
