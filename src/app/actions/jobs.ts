@@ -17,6 +17,8 @@ export async function createJob(formData: FormData) {
   const title = String(formData.get("title") ?? "");
   const category = String(formData.get("category") ?? "");
   const location = String(formData.get("location") ?? "");
+  const latitude = Number(formData.get("latitude") ?? -1.2921);
+  const longitude = Number(formData.get("longitude") ?? 36.8219);
   const budgetRange = String(formData.get("budgetRange") ?? "");
   const description = String(formData.get("description") ?? "");
 
@@ -29,6 +31,8 @@ export async function createJob(formData: FormData) {
     title,
     category,
     location,
+    latitude,
+    longitude,
     budget_range: budgetRange,
     description,
     status: "open",

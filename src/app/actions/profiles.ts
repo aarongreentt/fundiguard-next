@@ -38,3 +38,39 @@ export async function setMyRole(formData: FormData) {
 
   redirect(role === "client" ? "/dashboard" : "/pro-dashboard");
 }
+
+export async function updateServiceArea(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be signed in to continue");
+  }
+
+  const serviceLatitude = Number(formData.get("serviceLatitude") ?? 0);
+  const serviceLongitude = Number(formData.get("serviceLongitude") ?? 0);
+  const serviceRadiusKm = Number(formData.get("serviceRadiusKm") ?? 15);
+
+  if (!serviceLatitude || !serviceLongitude) {
+    throw new Error("Service location is required");
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      service_latitude: serviceLatitude,
+      service_longitude: serviceLongitude,
+      service_radius_km: serviceRadiusKm,
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/pro-dashboard");
+  revalidatePath("/profile");
+  return { success: true };
+}

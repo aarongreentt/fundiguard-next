@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { createSupabaseServerClient } from "@/lib/supabase/server-ssr";
 import { getMyRole } from "@/lib/profiles";
+import { COLORS, ANIMATIONS, SHADOWS, BORDER_RADIUS } from "@/lib/design-tokens";
 
 export default async function Page() {
   const supabase = await createSupabaseServerClient();
@@ -37,65 +38,123 @@ export default async function Page() {
     .order("created_at", { ascending: false });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Client dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Signed in as: {user?.email ?? user?.id}</p>
+    <main style={{ backgroundColor: COLORS['bg-light'], minHeight: '100vh' }} className="px-4 py-8 md:py-12">
+      <div
+        className="mx-auto max-w-6xl"
+      >
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+          <div>
+            <h1
+              className="text-4xl md:text-5xl font-bold mb-2"
+              style={{ color: COLORS['text-dark'] }}
+            >
+              Client Dashboard
+            </h1>
+            <p
+              style={{ color: COLORS['text-muted'] }}
+              className="text-base"
+            >
+              Welcome back! Manage your jobs and bids
+            </p>
+          </div>
+          <div>
+            <Button asChild className="font-semibold text-white px-8 py-6" style={{ backgroundColor: COLORS['energy-orange'] }}>
+              <Link href="/post-job">Post a New Job</Link>
+            </Button>
+          </div>
         </div>
-        <Button asChild>
-          <Link href="/post-job">Post a job</Link>
-        </Button>
-      </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">My jobs</CardTitle>
-            <CardDescription>Jobs you posted</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            {!(jobs && jobs.length) ? (
-              <p className="text-sm text-muted-foreground">No jobs posted yet.</p>
-            ) : (
-              jobs.map((job) => (
-                <div key={job.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <Link href={`/jobs/${job.id}`} className="text-sm font-medium hover:underline">
-                      {job.title}
-                    </Link>
-                    <Badge variant={job.status === "open" ? "default" : "secondary"}>{job.status}</Badge>
+        {/* Cards Section */}
+        <div
+          className="grid gap-6 md:grid-cols-2"
+        >
+          {/* Jobs Card */}
+          <div>
+            <Card style={{ boxShadow: SHADOWS.md, backgroundColor: 'white' }} className="h-full">
+              <CardHeader style={{ borderBottom: `1px solid ${COLORS['border-light']}` }}>
+                <CardTitle className="text-xl" style={{ color: COLORS['text-dark'] }}>
+                  My Jobs
+                </CardTitle>
+                <CardDescription style={{ color: COLORS['text-muted'] }}>
+                  {jobs?.length ?? 0} jobs posted
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {!(jobs && jobs.length) ? (
+                  <p style={{ color: COLORS['text-muted'] }} className="text-sm text-center py-8">
+                    No jobs posted yet. <Link href="/post-job" className="underline font-semibold" style={{ color: COLORS['energy-orange'] }}>Create one now</Link>
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {jobs.map((job, idx) => (
+                      <div
+                        key={job.id}
+                        style={{ backgroundColor: COLORS['bg-light'], borderRadius: BORDER_RADIUS.md }}
+                        className="p-4 hover:shadow-md transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <Link href={`/jobs/${job.id}`} className="font-medium text-sm hover:underline" style={{ color: COLORS['text-dark'] }}>
+                            {job.title}
+                          </Link>
+                          <Badge variant={job.status === "open" ? "default" : "secondary"}>
+                            {job.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs" style={{ color: COLORS['text-muted'] }}>
+                          {job.category} · {job.location}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{job.category} · {job.location}</p>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recent bids</CardTitle>
-            <CardDescription>Bids on your jobs</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            {!(bids && bids.length) ? (
-              <p className="text-sm text-muted-foreground">No bids yet.</p>
-            ) : (
-              bids.map((bid) => (
-                <div key={bid.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium">KSh {bid.amount}</span>
-                    <Badge variant={bid.status === "pending" ? "default" : "secondary"}>{bid.status}</Badge>
+          {/* Bids Card */}
+          <div>
+            <Card style={{ boxShadow: SHADOWS.md, backgroundColor: 'white' }} className="h-full">
+              <CardHeader style={{ borderBottom: `1px solid ${COLORS['border-light']}` }}>
+                <CardTitle className="text-xl" style={{ color: COLORS['text-dark'] }}>
+                  Recent Bids
+                </CardTitle>
+                <CardDescription style={{ color: COLORS['text-muted'] }}>
+                  {bids?.length ?? 0} bids received
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {!(bids && bids.length) ? (
+                  <p style={{ color: COLORS['text-muted'] }} className="text-sm text-center py-8">
+                    No bids yet. Post a job to receive bids
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {bids.map((bid, idx) => (
+                      <div
+                        key={bid.id}
+                        style={{ backgroundColor: COLORS['bg-light'], borderRadius: BORDER_RADIUS.md }}
+                        className="p-4 hover:shadow-md transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <span className="font-semibold text-sm" style={{ color: COLORS['trust-green'] }}>
+                            KSh {bid.amount}
+                          </span>
+                          <Badge variant={bid.status === "pending" ? "default" : "secondary"}>
+                            {bid.status}
+                          </Badge>
+                        </div>
+                        <Link href={`/jobs/${bid.job_id}`} className="text-xs hover:underline" style={{ color: COLORS['text-muted'] }}>
+                          View job
+                        </Link>
+                      </div>
+                    ))}
                   </div>
-                  <Link href={`/jobs/${bid.job_id}`} className="mt-1 text-xs text-muted-foreground hover:underline">
-                    View job
-                  </Link>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </main>
   );

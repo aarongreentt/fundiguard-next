@@ -15,6 +15,7 @@ export const env = {
   NEXT_PUBLIC_SUPABASE_URL: getEnvOptional("NEXT_PUBLIC_SUPABASE_URL"),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: getEnvOptional("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: getEnvOptional("SUPABASE_SERVICE_ROLE_KEY"),
+  NEXT_PUBLIC_TOMTOM_API_KEY: getEnvOptional("NEXT_PUBLIC_TOMTOM_API_KEY"),
 
   getRequired(key: string) {
     return getEnv(key);
