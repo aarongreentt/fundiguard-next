@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
   Edit2,
   Mail,
@@ -47,6 +49,7 @@ interface TabInfo {
 }
 
 export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean }) {
+  const router = useRouter();
   const [profile, setProfile] = useState<ProfileData>({
     id: 'user-123',
     first_name: 'John',
@@ -74,6 +77,28 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
     sms_notifications: true,
     marketing_emails: false,
   });
+
+  const handleSignOut = async () => {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error('[SignOut] Error:', error.message);
+        alert('Failed to sign out: ' + error.message);
+        return;
+      }
+
+      console.log('[SignOut] Successfully signed out');
+      
+      // Refresh server state and redirect
+      router.refresh();
+      router.push('/sign-in');
+    } catch (error) {
+      console.error('[SignOut] Exception:', error);
+      alert('An error occurred while signing out');
+    }
+  };
 
   const tabs: TabInfo[] = [
     { id: 'profile', label: 'Profile', enabled: true },
@@ -342,7 +367,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
             <ProfileSettings
               settings={settings}
               onSettingChange={handleSettingChange}
-              onSignOut={() => console.log('Sign out clicked')}
+              onSignOut={handleSignOut}
               onDeleteAccount={() => console.log('Delete account clicked')}
             />
           )}

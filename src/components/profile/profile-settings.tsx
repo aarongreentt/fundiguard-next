@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Lock,
@@ -40,6 +41,36 @@ export function ProfileSettings({
   onSignOut,
   onDeleteAccount,
 }: ProfileSettingsProps) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleSignOutClick = async () => {
+    if (!window.confirm('Are you sure you want to sign out?')) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    try {
+      await onSignOut?.();
+    } catch (error) {
+      console.error('[ProfileSettings] Sign out error:', error);
+      setIsSigningOut(false);
+    }
+  };
+
+  const handleDeleteAccountClick = async () => {
+    if (!window.confirm('Are you sure? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      await onDeleteAccount?.();
+    } catch (error) {
+      console.error('[ProfileSettings] Delete account error:', error);
+      setIsDeletingAccount(false);
+    }
+  };
   const privacySections: SettingsSection[] = [
     {
       icon: <Eye size={20} color={COLORS['text-muted']} />,
@@ -93,22 +124,25 @@ export function ProfileSettings({
       icon: <LogOut size={20} color={COLORS['text-muted']} />,
       label: 'Sign Out',
       description: 'Sign out from this device',
-      onAction: onSignOut,
+      onAction: handleSignOutClick,
     },
     {
       icon: <Trash2 size={20} color={COLORS['danger']} />,
       label: 'Delete Account',
       description: 'Permanently delete your account',
-      onAction: onDeleteAccount,
+      onAction: handleDeleteAccountClick,
       isDangerous: true,
     },
   ];
 
-  const SettingItem = ({ section, enabled }: { section: SettingsSection; enabled?: boolean }) => (
+  const SettingItem = ({ section, enabled, isLoading }: { section: SettingsSection; enabled?: boolean; isLoading?: boolean }) => (
     <motion.button
-      whileHover={{ backgroundColor: COLORS['bg-light'] }}
+      whileHover={!isLoading ? { backgroundColor: COLORS['bg-light'] } : {}}
       onClick={section.onAction}
-      className="w-full flex items-center justify-between p-4 rounded-lg transition-all"
+      disabled={isLoading}
+      className={`w-full flex items-center justify-between p-4 rounded-lg transition-all ${
+        isLoading ? 'opacity-60 cursor-not-allowed' : ''
+      }`}
       style={{
         backgroundColor: section.isDangerous ? `${COLORS['danger']}10` : 'transparent',
       }}
@@ -122,7 +156,8 @@ export function ProfileSettings({
               color: section.isDangerous ? COLORS['danger'] : COLORS['text-dark'],
             }}
           >
-            {section.label}
+            {isLoading && section.label === 'Sign Out' ? 'Signing out...' : section.label}
+            {isLoading && section.label === 'Delete Account' ? 'Deleting...' : section.label}
           </p>
           <p
             className="text-xs"
@@ -147,7 +182,12 @@ export function ProfileSettings({
           />
         </div>
       ) : (
-        <ChevronRight size={20} color={COLORS['text-muted']} />
+        <motion.div
+          animate={isLoading ? { rotate: 360 } : { rotate: 0 }}
+          transition={{ duration: 2, repeat: isLoading ? Infinity : 0 }}
+        >
+          <ChevronRight size={20} color={COLORS['text-muted']} />
+        </motion.div>
       )}
     </motion.button>
   );
@@ -247,7 +287,12 @@ export function ProfileSettings({
               className={i < securitySections.length - 1 ? 'border-b-2' : ''}
               style={{ borderColor: '#e5e7eb' }}
             >
-              <SettingItem section={section} />
+              <SettingItem
+                section={section}
+                isLoading={
+                  section.label === 'Sign Out' ? isSigningOut : section.label === 'Delete Account' ? isDeletingAccount : false
+                }
+              />
             </div>
           ))}
         </div>
