@@ -74,3 +74,38 @@ export async function updateServiceArea(formData: FormData) {
   revalidatePath("/profile");
   return { success: true };
 }
+
+export async function initializeUserProfile() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be signed in to continue");
+  }
+
+  // Check if profile already exists
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  // Only create if it doesn't exist
+  if (!existingProfile) {
+    const { error } = await supabase.from("profiles").insert({
+      id: user.id,
+      // role is null until they select it in onboarding
+      // all other fields will use database defaults
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/profile");
+  return { success: true };
+}
