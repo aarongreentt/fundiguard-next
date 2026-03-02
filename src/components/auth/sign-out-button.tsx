@@ -12,7 +12,12 @@ export function SignOutButton() {
   return (
     <Button
       variant="secondary"
+      disabled={!supabase}
       onClick={async () => {
+        if (!supabase) {
+          console.error("Supabase not configured");
+          return;
+        }
         await supabase.auth.signOut();
         router.refresh();
       }}

@@ -69,6 +69,13 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        if (!supabase) {
+          console.error("[ProfilePage] Supabase client not available");
+          setError('Supabase is not configured');
+          setIsLoading(false);
+          return;
+        }
+
         console.log("[ProfilePage] Loading profile...");
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 

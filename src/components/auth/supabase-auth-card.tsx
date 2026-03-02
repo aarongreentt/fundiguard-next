@@ -21,6 +21,11 @@ export function SupabaseAuthCard({
   const supabase = useSupabaseClient();
 
   useEffect(() => {
+    if (!supabase) {
+      console.error("[SupabaseAuthCard] Supabase client not available");
+      return;
+    }
+
     // Listen for auth state changes to auto-create profile on signup and redirect on signin
     const {
       data: { subscription },
