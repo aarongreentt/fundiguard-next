@@ -47,8 +47,10 @@ export async function setMyRole(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/dashboard");
   revalidatePath("/pro-dashboard");
+  revalidatePath("/profile");
 
-  redirect(role === "client" ? "/dashboard" : "/pro-dashboard");
+  // Redirect to profile setup page after role selection
+  redirect("/profile");
 }
 
 export async function updateServiceArea(formData: FormData) {
@@ -149,5 +151,127 @@ export async function initializeUserProfile() {
 
   revalidatePath("/");
   revalidatePath("/profile");
+  return { success: true };
+}
+
+export async function updateProfileData(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    console.error("[updateProfileData] Auth error:", authError?.message);
+    throw new Error("You must be signed in to continue");
+  }
+
+  console.log("[updateProfileData] Updating profile for user:", user.id);
+
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim() || null;
+  const location = String(formData.get("location") ?? "").trim();
+  const bio = String(formData.get("bio") ?? "").trim() || null;
+  const hourlyRate = Number(formData.get("hourly_rate") ?? 0) || null;
+  const experienceYears = Number(formData.get("experience_years") ?? 0) || null;
+  const preferredBudgetMin = Number(formData.get("preferred_budget_min") ?? 0) || null;
+  const preferredBudgetMax = Number(formData.get("preferred_budget_max") ?? 0) || null;
+
+  // Validate required fields
+  if (!firstName || !lastName || !location) {
+    throw new Error("First name, last name, and location are required");
+  }
+
+  // Build update object with only available fields
+  // Only include fields that the database schema actually has
+  const updateData: any = {
+    first_name: firstName,
+    last_name: lastName,
+    location,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (phone) updateData.phone = phone;
+  if (bio) updateData.bio = bio;
+  if (hourlyRate !== null) updateData.hourly_rate = hourlyRate;
+  // Only include optional fields if they exist in the schema
+  // Note: experience_years, preferred_budget_min/max may not exist in all schemas
+
+  console.log("[updateProfileData] Updating with data:", updateData);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(updateData)
+    .eq("id", user.id);
+
+  if (error) {
+    console.error("[updateProfileData] Database error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    });
+    throw new Error(`Failed to update profile: ${error.message}`);
+  }
+
+  console.log("[updateProfileData] Profile updated successfully");
+
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  revalidatePath("/pro-dashboard");
+
+  return { success: true };
+}
+
+export async function changePassword(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    console.error("[changePassword] Auth error:", authError?.message);
+    throw new Error("You must be signed in to continue");
+  }
+
+  const currentPassword = String(formData.get("currentPassword") ?? "").trim();
+  const newPassword = String(formData.get("newPassword") ?? "").trim();
+  const confirmPassword = String(formData.get("confirmPassword") ?? "").trim();
+
+  // Validation
+  if (!currentPassword) {
+    throw new Error("Current password is required");
+  }
+  if (!newPassword) {
+    throw new Error("New password is required");
+  }
+  if (newPassword.length < 8) {
+    throw new Error("New password must be at least 8 characters");
+  }
+  if (newPassword !== confirmPassword) {
+    throw new Error("Passwords do not match");
+  }
+
+  console.log("[changePassword] Attempting to change password for user:", user.id);
+
+  // Update password using Supabase auth
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    console.error("[changePassword] Password update error:", {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+    });
+    throw new Error(`Failed to update password: ${error.message}`);
+  }
+
+  console.log("[changePassword] Password updated successfully");
+
+  revalidatePath("/profile");
+
   return { success: true };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type SupabaseClient = ReturnType<typeof createSupabaseBrowserClient>;
 

@@ -7,10 +7,18 @@ export function createSupabaseBrowserClient() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
-    throw new Error(
-      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+    console.warn(
+      "[createSupabaseBrowserClient] Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local"
     );
+    return null;
   }
 
-  return createBrowserClient(url, anonKey);
+  // createBrowserClient handles session persistence in SSR environments
+  // It properly manages cookies for next-js and recovery after email verification
+  const client = createBrowserClient(url, anonKey);
+  
+  console.log("[createSupabaseBrowserClient] Supabase client created successfully");
+  
+  return client;
 }
+

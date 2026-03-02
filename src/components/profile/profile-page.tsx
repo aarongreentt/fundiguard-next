@@ -23,6 +23,7 @@ import { ProfileSettings } from '@/components/profile/profile-settings';
 import { ProfilePreferences } from '@/components/profile/profile-preferences';
 import { ProfileVerification } from '@/components/profile/profile-verification';
 import { ProfileReviews } from '@/components/profile/profile-reviews';
+import { updateProfileData } from '@/app/actions/profiles';
 
 interface ProfileData {
   id: string;
@@ -35,9 +36,6 @@ interface ProfileData {
   avatar_url?: string;
   user_type?: 'client' | 'fundi';
   hourly_rate?: number;
-  experience_years?: number;
-  preferred_budget_min?: number;
-  preferred_budget_max?: number;
   completion_percentage?: number;
   is_pro?: boolean;
   verification_status?: 'verified' | 'pending' | 'rejected' | 'not_started';
@@ -57,6 +55,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isInitialSetup, setIsInitialSetup] = useState(false);
   const [settings, setSettings] = useState({
     private_profile: false,
     show_phone: true,
@@ -151,13 +150,20 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
           avatar_url: profileData.avatar_url,
           user_type: profileData.role || 'client',
           hourly_rate: profileData.hourly_rate,
-          experience_years: profileData.experience_years,
-          preferred_budget_min: profileData.preferred_budget_min,
-          preferred_budget_max: profileData.preferred_budget_max,
           completion_percentage: profileData.completion_percentage || 0,
           is_pro: profileData.is_pro || false,
           verification_status: profileData.verification_status || 'not_started',
         });
+
+        // Check if this is initial setup (no name/location set yet)
+        const isSetup = !!(profileData.first_name && profileData.location);
+        setIsInitialSetup(!isSetup);
+        
+        // If initial setup not complete, open edit form automatically
+        if (!isSetup) {
+          console.log("[ProfilePage] Initial setup detected, opening edit form");
+          setIsEditingProfile(true);
+        }
       } catch (err) {
         console.error('[ProfilePage] Error loading profile:', err);
         setError('Failed to load profile');
@@ -171,6 +177,10 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
 
   const handleSignOut = async () => {
     try {
+      if (!supabase) {
+        console.warn('[Header] Supabase not configured, cannot logout');
+        return;
+      }
       const { error } = await supabase.auth.signOut();
 
       if (error) {
@@ -205,19 +215,53 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
     }));
   };
 
-  const handleProfileUpdate = (updatedData: Partial<ProfileData>) => {
+  const handleProfileUpdate = async (updatedData: Partial<ProfileData>) => {
     if (!profile) return;
-    setProfile((prev) => 
-      prev ? {
-        ...prev,
-        ...updatedData,
-        completion_percentage: Math.min(
-          100,
-          (Object.keys(updatedData).length / 8) * 100
-        ),
-      } : null
-    );
-    setIsEditingProfile(false);
+
+    try {
+      // Create FormData for the server action
+      const formData = new FormData();
+      if (updatedData.first_name) formData.append("first_name", updatedData.first_name);
+      if (updatedData.last_name) formData.append("last_name", updatedData.last_name);
+      if (updatedData.phone) formData.append("phone", updatedData.phone);
+      if (updatedData.location) formData.append("location", updatedData.location);
+      if (updatedData.bio) formData.append("bio", updatedData.bio);
+      if (updatedData.hourly_rate) formData.append("hourly_rate", String(updatedData.hourly_rate));
+
+      // Call the server action to save changes
+      console.log("[ProfilePage] Saving profile updates...");
+      await updateProfileData(formData);
+      console.log("[ProfilePage] Profile saved successfully");
+
+      // Update local state
+      setProfile((prev) => 
+        prev ? {
+          ...prev,
+          ...updatedData,
+          completion_percentage: Math.min(
+            100,
+            (Object.keys(updatedData).length / 8) * 100
+          ),
+        } : null
+      );
+      setIsEditingProfile(false);
+
+      // If this was initial setup, redirect to dashboard after saving
+      if (isInitialSetup && updatedData.first_name && updatedData.location) {
+        console.log("[ProfilePage] Initial setup complete, redirecting to dashboard");
+        setIsInitialSetup(false);
+        
+        // Give user feedback before redirecting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const dashboardUrl = profile.user_type === 'fundi' ? '/pro-dashboard' : '/dashboard';
+        console.log("[ProfilePage] Redirecting to:", dashboardUrl);
+        router.push(dashboardUrl);
+      }
+    } catch (error) {
+      console.error("[ProfilePage] Error updating profile:", error);
+      setError(error instanceof Error ? error.message : "Failed to save profile");
+    }
   };
 
   if (isLoading) {
@@ -332,7 +376,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                   </h1>
                   <p className="text-sm mt-1" style={{ color: COLORS['text-muted'] }}>
                     {profile.user_type === 'fundi'
-                      ? `${profile.experience_years} years experience`
+                      ? 'Professional Fundi'
                       : 'Business Owner'}
                   </p>
                 </div>
@@ -445,7 +489,6 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                 <FundiProfileSection
                   profile={{
                     hourly_rate: profile.hourly_rate,
-                    experience_years: profile.experience_years,
                     average_rating: 4.8,
                     total_reviews: 47,
                     total_jobs: 47,

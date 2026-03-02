@@ -44,16 +44,17 @@ export function SupabaseAuthCard({
           }
           
           // Delay redirect slightly to ensure auth session is fully established
-          console.log("[SupabaseAuthCard] Redirecting to dashboard...");
+          // Redirect to onboarding flow first (role selection, then profile setup)
+          console.log("[SupabaseAuthCard] Redirecting to onboarding...");
           setTimeout(() => {
-            router.push("/dashboard");
+            router.push("/onboarding/role");
             router.refresh();
           }, 500);
         } catch (error) {
           console.error("[SupabaseAuthCard] Error during signin:", error);
           // Still redirect even if profile creation fails
           setTimeout(() => {
-            router.push("/dashboard");
+            router.push("/onboarding/role");
             router.refresh();
           }, 500);
         }
@@ -64,6 +65,23 @@ export function SupabaseAuthCard({
       subscription?.unsubscribe();
     };
   }, [supabase, router, view]);
+
+  if (!supabase) {
+    return (
+      <main className="mx-auto max-w-md px-4 py-12">
+        <Card>
+          <CardHeader>
+            <CardTitle>Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-destructive">
+              Unable to initialize authentication. Please refresh the page and try again.
+            </p>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">

@@ -7,7 +7,6 @@ import { COLORS, ANIMATIONS, SHADOWS, BORDER_RADIUS } from '@/lib/design-tokens'
 interface FundiProfileSectionProps {
   profile: {
     hourly_rate?: number;
-    experience_years?: number;
     specialties?: string[];
     service_areas?: string[];
     average_rating?: number;
@@ -43,8 +42,8 @@ export function FundiProfileSection({
       <motion.div variants={ANIMATIONS.itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: Clock, label: 'Rate', value: `KES ${profile.hourly_rate || 0}/hr` },
-          { icon: Award, label: 'Experience', value: `${profile.experience_years || 0} yrs` },
           { icon: Star, label: 'Rating', value: `${profile.average_rating || 0}★` },
+          { icon: Star, label: 'Reviews', value: `${profile.total_reviews || 0}` },
           { icon: Clock, label: 'Jobs', value: `${profile.total_jobs || 0} done` },
         ].map((stat, i) => {
           const Icon = stat.icon;

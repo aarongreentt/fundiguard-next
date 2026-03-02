@@ -16,13 +16,7 @@ interface EditProfileFormProps {
     location?: string;
     bio?: string;
     profile_image?: string;
-    // Fundi specific
-    specialties?: string[];
     hourly_rate?: number;
-    experience_years?: number;
-    // Client specific
-    preferred_budget_min?: number;
-    preferred_budget_max?: number;
   };
   onSave?: (data: any) => Promise<void>;
   onCancel?: () => void;
@@ -195,7 +189,7 @@ export function EditProfileForm({
         {/* Fundi-Specific Fields */}
         {userType === 'fundi' && (
           <>
-            <motion.div variants={ANIMATIONS.itemVariants} className="grid md:grid-cols-2 gap-4">
+            <motion.div variants={ANIMATIONS.itemVariants}>
               <ModernFormInput
                 label="Hourly Rate (KES)"
                 placeholder="e.g., 500"
@@ -203,41 +197,6 @@ export function EditProfileForm({
                 value={formData.hourly_rate || ''}
                 onChange={(e) =>
                   handleInputChange('hourly_rate', parseInt(e.target.value) || 0)
-                }
-              />
-              <ModernFormInput
-                label="Years of Experience"
-                placeholder="e.g., 5"
-                type="number"
-                value={formData.experience_years || ''}
-                onChange={(e) =>
-                  handleInputChange('experience_years', parseInt(e.target.value) || 0)
-                }
-              />
-            </motion.div>
-          </>
-        )}
-
-        {/* Client-Specific Fields */}
-        {userType === 'client' && (
-          <>
-            <motion.div variants={ANIMATIONS.itemVariants} className="grid md:grid-cols-2 gap-4">
-              <ModernFormInput
-                label="Preferred Min Budget (KES)"
-                placeholder="e.g., 1000"
-                type="number"
-                value={formData.preferred_budget_min || ''}
-                onChange={(e) =>
-                  handleInputChange('preferred_budget_min', parseInt(e.target.value) || 0)
-                }
-              />
-              <ModernFormInput
-                label="Preferred Max Budget (KES)"
-                placeholder="e.g., 10000"
-                type="number"
-                value={formData.preferred_budget_max || ''}
-                onChange={(e) =>
-                  handleInputChange('preferred_budget_max', parseInt(e.target.value) || 0)
                 }
               />
             </motion.div>
