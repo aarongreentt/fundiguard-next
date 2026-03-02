@@ -13,6 +13,7 @@ import {
   Share2,
   MoreVertical,
   ArrowLeft,
+  Upload,
 } from 'lucide-react';
 import { COLORS, ANIMATIONS, SHADOWS } from '@/lib/design-tokens';
 import { ProfileCompletionIndicator } from '@/components/profile/profile-completion-indicator';
@@ -55,7 +56,17 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
+  const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+  const [portfolioForm, setPortfolioForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+  });
+  const [portfolioImage, setPortfolioImage] = useState<File | null>(null);
+  const [portfolioPreview, setPortfolioPreview] = useState<string>('');
   const [settings, setSettings] = useState({
     private_profile: false,
     show_phone: true,
@@ -174,6 +185,133 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
 
     loadProfile();
   }, [supabase, router]);
+
+  // Fetch portfolio items for fundis
+  useEffect(() => {
+    if (profile?.user_type === 'fundi' && profile.id) {
+      const fetchPortfolio = async () => {
+        try {
+          console.log('[ProfilePage] Fetching portfolio items for:', profile.id);
+          const response = await fetch(`/api/portfolio?fundiId=${profile.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[ProfilePage] Portfolio items loaded:', data);
+            setPortfolioItems(data || []);
+          } else {
+            console.error('[ProfilePage] Failed to fetch portfolio');
+          }
+        } catch (error) {
+          console.error('[ProfilePage] Error fetching portfolio:', error);
+        }
+      };
+      fetchPortfolio();
+    }
+  }, [profile?.id, profile?.user_type]);
+
+  const handleAddPortfolio = async () => {
+    console.log('[ProfilePage] Opening portfolio upload modal');
+    setIsAddingPortfolio(true);
+  };
+
+  const handlePortfolioImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setPortfolioImage(file);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPortfolioPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      console.log('[ProfilePage] Portfolio image selected:', file.name);
+    }
+  };
+
+  const handlePortfolioSubmit = async () => {
+    console.log('[ProfilePage] Submitting portfolio item:', portfolioForm);
+    
+    if (!portfolioForm.title.trim() || !portfolioForm.description.trim() || !portfolioImage) {
+      console.error('[ProfilePage] Missing required portfolio fields');
+      alert('Title, description, and image are required');
+      return;
+    }
+
+    try {
+      setPortfolioLoading(true);
+
+      // First, upload the image
+      console.log('[ProfilePage] Uploading portfolio image...');
+      const imageFormData = new FormData();
+      imageFormData.append('file', portfolioImage);
+      imageFormData.append('folder', 'portfolio');
+
+      const imageResponse = await fetch('/api/images', {
+        method: 'POST',
+        body: imageFormData,
+      });
+
+      if (!imageResponse.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const { url: imageUrl } = await imageResponse.json();
+      console.log('[ProfilePage] Image uploaded to:', imageUrl);
+
+      // Then, create the portfolio item
+      const response = await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: portfolioForm.title.trim(),
+          description: portfolioForm.description.trim(),
+          category: portfolioForm.category.trim() || null,
+          image_url: imageUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create portfolio item');
+      }
+
+      const newItem = await response.json();
+      console.log('[ProfilePage] Portfolio item created:', newItem);
+
+      // Add to local state
+      setPortfolioItems([newItem, ...portfolioItems]);
+
+      // Reset form
+      setPortfolioForm({ title: '', description: '', category: '' });
+      setPortfolioImage(null);
+      setPortfolioPreview('');
+      setIsAddingPortfolio(false);
+
+      alert('Portfolio item added successfully!');
+    } catch (error) {
+      console.error('[ProfilePage] Error uploading portfolio item:', error);
+      alert('Failed to add portfolio item. Please try again.');
+    } finally {
+      setPortfolioLoading(false);
+    }
+  };
+
+  const handleDeletePortfolioItem = async (itemId: string) => {
+    console.log('[ProfilePage] Deleting portfolio item:', itemId);
+    
+    if (!confirm('Are you sure you want to delete this portfolio item?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/portfolio/${itemId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('Failed to delete portfolio item');
+      }
+      console.log('[ProfilePage] Portfolio item deleted');
+      setPortfolioItems(portfolioItems.filter(item => item.id !== itemId));
+    } catch (error) {
+      console.error('[ProfilePage] Error deleting portfolio item:', error);
+      alert('Failed to delete portfolio item');
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -497,7 +635,13 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                     total_jobs: 47,
                     specialties: ['Electrical', 'Installation', 'Repairs'],
                     service_areas: ['Nairobi CBD', 'Westlands', 'Karen'],
-                    portfolio_items: [],
+                    portfolio_items: portfolioItems.map(item => ({
+                      id: item.id,
+                      title: item.title,
+                      description: item.description,
+                      image: item.image_url,
+                      category: item.category,
+                    })),
                     verification_status: (
                       profile.verification_status === 'not_started'
                         ? undefined
@@ -505,6 +649,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                     ),
                   }}
                   isOwnProfile={isOwnProfile}
+                  onAddPortfolio={handleAddPortfolio}
                 />
               ) : (
                 <ClientProfileSection
@@ -595,6 +740,163 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                 setIsEditingProfile(false);
               }}
             />
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Portfolio Upload Modal */}
+      {isAddingPortfolio && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ 
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            pointerEvents: 'auto'
+          }}
+          onClick={() => {
+            console.log("[ProfilePage] Portfolio modal background clicked, closing");
+            setIsAddingPortfolio(false);
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-lg p-8 max-w-md w-full"
+            style={{ 
+              boxShadow: SHADOWS.xl,
+              zIndex: 10000,
+              pointerEvents: 'auto'
+            }}
+          >
+            <h2
+              className="text-2xl font-bold mb-6"
+              style={{ color: COLORS['text-dark'] }}
+            >
+              Add Portfolio Item
+            </h2>
+
+            <div className="space-y-4">
+              {/* Image Upload */}
+              <div>
+                <label
+                  className="block text-sm font-bold mb-2"
+                  style={{ color: COLORS['text-dark'] }}
+                >
+                  Work Image
+                </label>
+                {portfolioPreview && (
+                  <div className="mb-3 rounded-lg overflow-hidden" style={{ boxShadow: SHADOWS.sm }}>
+                    <img src={portfolioPreview} alt="Preview" className="w-full h-40 object-cover" />
+                  </div>
+                )}
+                <motion.label
+                  whileHover={{ scale: 1.02 }}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-all"
+                  style={{
+                    borderColor: COLORS['trust-green'],
+                    backgroundColor: `${COLORS['trust-green']}10`,
+                  }}
+                >
+                  <Upload size={20} color={COLORS['trust-green']} />
+                  <span className="font-bold text-sm" style={{ color: COLORS['text-dark'] }}>
+                    {portfolioPreview ? 'Change Image' : 'Upload Image'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePortfolioImageChange}
+                    className="hidden"
+                  />
+                </motion.label>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: COLORS['text-dark'] }}>
+                  Project Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Kitchen Renovation"
+                  value={portfolioForm.title}
+                  onChange={(e) => setPortfolioForm({ ...portfolioForm, title: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border-2"
+                  style={{
+                    borderColor: COLORS['trust-green'],
+                    backgroundColor: `${COLORS['trust-green']}10`,
+                  }}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: COLORS['text-dark'] }}>
+                  Description
+                </label>
+                <textarea
+                  placeholder="Describe the project..."
+                  value={portfolioForm.description}
+                  onChange={(e) => setPortfolioForm({ ...portfolioForm, description: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border-2 resize-none"
+                  rows={4}
+                  style={{
+                    borderColor: COLORS['trust-green'],
+                    backgroundColor: `${COLORS['trust-green']}10`,
+                  }}
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: COLORS['text-dark'] }}>
+                  Category (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Electrical, Plumbing"
+                  value={portfolioForm.category}
+                  onChange={(e) => setPortfolioForm({ ...portfolioForm, category: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border-2"
+                  style={{
+                    borderColor: COLORS['trust-green'],
+                    backgroundColor: `${COLORS['trust-green']}10`,
+                  }}
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsAddingPortfolio(false)}
+                  disabled={portfolioLoading}
+                  className="flex-1 px-6 py-3 rounded-lg font-bold border-2 transition-all disabled:opacity-50"
+                  style={{
+                    borderColor: COLORS['text-muted'],
+                    color: COLORS['text-dark'],
+                  }}
+                >
+                  Cancel
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handlePortfolioSubmit}
+                  disabled={portfolioLoading}
+                  className="flex-1 px-6 py-3 rounded-lg font-bold text-white transition-all disabled:opacity-50"
+                  style={{ backgroundColor: COLORS['trust-green'] }}
+                >
+                  {portfolioLoading ? 'Adding...' : 'Add Portfolio'}
+                </motion.button>
+              </div>
+            </div>
           </motion.div>
         </motion.div>
       )}
