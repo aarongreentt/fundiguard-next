@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface DebugLog {
   timestamp: string;
@@ -9,6 +9,18 @@ interface DebugLog {
 export function useDebugLog(maxLogs: number = 50) {
   const [logs, setLogs] = useState<DebugLog[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const pendingLogsRef = useRef<DebugLog[]>([]);
+  const flushTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const flushLogs = useCallback(() => {
+    if (pendingLogsRef.current.length > 0) {
+      setLogs(prev => {
+        const newLogs = [...prev, ...pendingLogsRef.current];
+        return newLogs.slice(-maxLogs);
+      });
+      pendingLogsRef.current = [];
+    }
+  }, [maxLogs]);
 
   useEffect(() => {
     // Override console methods to capture logs
@@ -19,11 +31,13 @@ export function useDebugLog(maxLogs: number = 50) {
 
     const addLog = (message: string, type: 'log' | 'error' | 'warn' | 'info' = 'log') => {
       const timestamp = new Date().toLocaleTimeString();
-      setLogs(prev => {
-        const newLogs = [...prev, { timestamp, message, type }];
-        // Keep only the latest maxLogs entries
-        return newLogs.slice(-maxLogs);
-      });
+      pendingLogsRef.current.push({ timestamp, message, type });
+
+      // Batch updates: flush logs after render completes
+      if (flushTimeoutRef.current) {
+        clearTimeout(flushTimeoutRef.current);
+      }
+      flushTimeoutRef.current = setTimeout(flushLogs, 0);
     };
 
     console.log = (...args: any[]) => {
@@ -59,12 +73,15 @@ export function useDebugLog(maxLogs: number = 50) {
     };
 
     return () => {
+      if (flushTimeoutRef.current) {
+        clearTimeout(flushTimeoutRef.current);
+      }
       console.log = originalLog;
       console.error = originalError;
       console.warn = originalWarn;
       console.info = originalInfo;
     };
-  }, [maxLogs]);
+  }, [flushLogs]);
 
   return { logs, isOpen, setIsOpen };
 }
