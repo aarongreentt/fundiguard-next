@@ -2,19 +2,62 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Plus, Briefcase, User } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Home, Search, Plus, Briefcase, User, LogIn } from 'lucide-react';
 import { COLORS } from '@/lib/design-tokens';
-
-const NAV_ITEMS = [
-  { icon: Home, label: 'Home', href: '/' },
-  { icon: Search, label: 'Browse', href: '/browse' },
-  { icon: Plus, label: 'Post', href: '/post-job' },
-  { icon: Briefcase, label: 'Jobs', href: '/dashboard' },
-  { icon: User, label: 'Profile', href: '/profile' },
-];
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const supabase = useMemo(() => {
+    try {
+      return createSupabaseBrowserClient();
+    } catch (error) {
+      console.warn('Supabase initialization error:', error);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!supabase) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+      } catch (error) {
+        console.warn('Error checking auth:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [supabase]);
+
+  // Build nav items based on auth state
+  const NAV_ITEMS = isAuthenticated
+    ? [
+        { icon: Home, label: 'Home', href: '/' },
+        { icon: Search, label: 'Browse', href: '/browse' },
+        { icon: Plus, label: 'Post', href: '/post-job' },
+        { icon: Briefcase, label: 'Jobs', href: '/dashboard' },
+        { icon: User, label: 'Profile', href: '/profile' },
+      ]
+    : [
+        { icon: Home, label: 'Home', href: '/' },
+        { icon: Search, label: 'Browse', href: '/browse' },
+        { icon: Plus, label: 'Post', href: '/post-job', disabled: true },
+        { icon: Briefcase, label: 'Jobs', href: '/dashboard', disabled: true },
+        { icon: LogIn, label: 'Sign In', href: '/sign-in' },
+      ];
 
   return (
     <nav 
@@ -26,27 +69,20 @@ export function BottomNav() {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           const isPostBtn = item.label === 'Post';
+          const isDisabled = (item as any).disabled || isLoading;
           
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center justify-center py-3 px-2 flex-1 transition-all ${
-                isPostBtn
-                  ? 'relative -top-6'
-                  : ''
-              }`}
-            >
+          const content = (
+            <>
               <div
                 className={`relative flex items-center justify-center transition-all ${
                   isPostBtn
                     ? `w-14 h-14 rounded-full text-white shadow-lg`
                     : `w-10 h-10`
-                }`}
+                } ${isDisabled ? 'opacity-50' : ''}`}
                 style={{
                   backgroundColor: isPostBtn
                     ? COLORS['energy-orange']
-                    : isActive
+                    : isActive && !isDisabled
                     ? `${COLORS['trust-green']}15`
                     : 'transparent',
                 }}
@@ -56,7 +92,7 @@ export function BottomNav() {
                   color={
                     isPostBtn
                       ? 'white'
-                      : isActive
+                      : isActive && !isDisabled
                       ? COLORS['trust-green']
                       : COLORS['text-muted']
                   }
@@ -64,16 +100,41 @@ export function BottomNav() {
               </div>
               <span
                 className={`text-xs mt-1 font-medium transition-colors ${
-                  isActive
+                  isActive && !isDisabled
                     ? 'text-[color:var(--trust-green)]'
                     : 'text-gray-600'
-                }`}
+                } ${isDisabled ? 'opacity-50' : ''}`}
                 style={{
-                  color: isActive ? COLORS['trust-green'] : COLORS['text-muted'],
+                  color: isActive && !isDisabled ? COLORS['trust-green'] : COLORS['text-muted'],
                 }}
               >
                 {item.label}
               </span>
+            </>
+          );
+
+          if (isDisabled && item.label !== 'Home' && item.label !== 'Browse' && item.label !== 'Sign In') {
+            return (
+              <div
+                key={item.href}
+                className="flex flex-col items-center justify-center py-3 px-2 flex-1 cursor-not-allowed"
+              >
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={isDisabled ? '#' : item.href}
+              className={`flex flex-col items-center justify-center py-3 px-2 flex-1 transition-all ${
+                isPostBtn
+                  ? 'relative -top-6'
+                  : ''
+              } ${isDisabled ? 'cursor-not-allowed pointer-events-none' : ''}`}
+            >
+              {content}
             </Link>
           );
         })}

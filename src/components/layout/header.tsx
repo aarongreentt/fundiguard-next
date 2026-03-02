@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, Search, Globe, LogOut } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { COLORS, SHADOWS } from '@/lib/design-tokens';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation';
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -25,12 +27,35 @@ export function Header() {
     }
   }, []);
 
+  // Check authentication status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!supabase) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+      } catch (error) {
+        console.warn('Error checking auth:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [supabase]);
+
   const handleLogout = async () => {
     if (!supabase) {
       console.warn('Supabase not configured, cannot logout');
       return;
     }
     await supabase.auth.signOut();
+    setIsAuthenticated(false);
     router.push('/');
   };
 
@@ -110,48 +135,68 @@ export function Header() {
 
           {/* Profile Menu */}
           <div className="relative">
-            <button
-              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-              className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+            {isLoading ? (
+              // Loading state - show skeleton
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                style={{ backgroundColor: COLORS['energy-orange'] }}
-              >
-                U
-              </div>
-            </button>
-
-            {/* Profile Dropdown */}
-            {profileMenuOpen && (
-              <div
-                className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden z-50"
-                style={{ boxShadow: SHADOWS.lg }}
-              >
-                <Link
-                  href="/dashboard"
-                  className="block px-4 py-3 text-sm hover:bg-gray-50 transition-colors"
-                  style={{ color: COLORS['text-dark'] }}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  className="block px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-200"
-                  style={{ color: COLORS['text-dark'] }}
-                >
-                  Profile
-                </Link>
+                className="w-8 h-8 rounded-full"
+                style={{ backgroundColor: COLORS['bg-light'] }}
+              />
+            ) : isAuthenticated ? (
+              // Authenticated - show profile menu
+              <>
                 <button
-                  onClick={handleLogout}
-                  disabled={!supabase}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ color: COLORS['danger'] }}
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <LogOut size={16} />
-                  {supabase ? 'Sign Out' : 'Sign Out (Offline)'}
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                    style={{ backgroundColor: COLORS['energy-orange'] }}
+                  >
+                    U
+                  </div>
                 </button>
-              </div>
+
+                {/* Profile Dropdown */}
+                {profileMenuOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden z-50"
+                    style={{ boxShadow: SHADOWS.lg }}
+                  >
+                    <Link
+                      href="/dashboard"
+                      className="block px-4 py-3 text-sm hover:bg-gray-50 transition-colors"
+                      style={{ color: COLORS['text-dark'] }}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/profile"
+                      className="block px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-200"
+                      style={{ color: COLORS['text-dark'] }}
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      disabled={!supabase}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-gray-50 transition-colors border-t border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ color: COLORS['danger'] }}
+                    >
+                      <LogOut size={16} />
+                      {supabase ? 'Sign Out' : 'Sign Out (Offline)'}
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Not authenticated - show sign in button
+              <Link
+                href="/sign-in"
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ backgroundColor: COLORS['trust-green'] }}
+              >
+                Sign In
+              </Link>
             )}
           </div>
 
