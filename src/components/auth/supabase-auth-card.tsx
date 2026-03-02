@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -15,25 +16,41 @@ export function SupabaseAuthCard({
 }: {
   view: "sign_in" | "sign_up";
 }) {
+  const router = useRouter();
   // Memoize the supabase client to prevent recreating it on every render
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   useEffect(() => {
-    // Listen for auth state changes to auto-create profile on signup
+    // Listen for auth state changes to auto-create profile on signup and redirect on signin
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[SupabaseAuthCard] Auth state changed:", event, session?.user?.id);
       
-      // When user signs up (first time they get a session), create their profile
       if (event === "SIGNED_IN" && session?.user) {
         try {
-          console.log("[SupabaseAuthCard] Initializing profile for user:", session.user.id);
-          const result = await initializeUserProfile();
-          console.log("[SupabaseAuthCard] Profile initialized successfully:", result);
+          console.log("[SupabaseAuthCard] User signed in:", session.user.id);
+          
+          // Initialize profile if needed
+          if (view === "sign_up") {
+            console.log("[SupabaseAuthCard] Initializing profile for new user");
+            const result = await initializeUserProfile();
+            console.log("[SupabaseAuthCard] Profile initialized successfully:", result);
+          }
+          
+          // Delay redirect slightly to ensure auth session is fully established
+          console.log("[SupabaseAuthCard] Redirecting to dashboard...");
+          setTimeout(() => {
+            router.push("/dashboard");
+            router.refresh();
+          }, 500);
         } catch (error) {
-          console.error("[SupabaseAuthCard] Failed to initialize profile:", error);
-          // Don't block signup if profile creation fails - user can still proceed
+          console.error("[SupabaseAuthCard] Error during signin:", error);
+          // Still redirect even if profile creation fails
+          setTimeout(() => {
+            router.push("/dashboard");
+            router.refresh();
+          }, 500);
         }
       }
     });
@@ -41,7 +58,7 @@ export function SupabaseAuthCard({
     return () => {
       subscription?.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router, view]);
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
