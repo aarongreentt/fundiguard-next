@@ -22,17 +22,19 @@ export function BottomNav() {
   }, []);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        setIsLoading(false);
-        return;
-      }
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
 
+    // First, get current user
+    const checkAuth = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        console.log("[BottomNav] Current user:", user?.id);
         setIsAuthenticated(!!user);
       } catch (error) {
-        console.warn('Error checking auth:', error);
+        console.warn('[BottomNav] Error checking auth:', error);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -40,6 +42,25 @@ export function BottomNav() {
     };
 
     checkAuth();
+
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[BottomNav] Auth state changed:", event, session?.user?.id);
+      
+      if (event === "SIGNED_OUT") {
+        console.log("[BottomNav] User signed out");
+        setIsAuthenticated(false);
+      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        console.log("[BottomNav] User signed in/updated");
+        setIsAuthenticated(!!session?.user);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [supabase]);
 
   // Build nav items based on auth state

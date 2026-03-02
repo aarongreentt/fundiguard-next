@@ -27,26 +27,47 @@ export function Header() {
     }
   }, []);
 
-  // Check authentication status on mount
+  // Check authentication status on mount and listen for changes
   useEffect(() => {
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    // First, get the current user
     const checkAuth = async () => {
-      if (!supabase) {
-        setIsLoading(false);
-        return;
-      }
-      
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        console.log("[Header] Current user:", user?.id);
         setIsAuthenticated(!!user);
+        setIsLoading(false);
       } catch (error) {
-        console.warn('Error checking auth:', error);
+        console.warn('[Header] Error checking auth:', error);
         setIsAuthenticated(false);
-      } finally {
         setIsLoading(false);
       }
     };
 
     checkAuth();
+
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Header] Auth state changed:", event, session?.user?.id);
+      
+      if (event === "SIGNED_OUT") {
+        console.log("[Header] User signed out");
+        setIsAuthenticated(false);
+      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        console.log("[Header] User signed in/updated");
+        setIsAuthenticated(!!session?.user);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [supabase]);
 
   const handleLogout = async () => {
