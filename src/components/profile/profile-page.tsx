@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useSupabaseClient } from '@/lib/hooks/useSupabaseClient';
 import { initializeUserProfile } from '@/app/actions/profiles';
 import {
   Edit2,
@@ -51,7 +51,7 @@ interface TabInfo {
 
 export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean }) {
   const router = useRouter();
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const supabase = useSupabaseClient();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +164,6 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
 
   const handleSignOut = async () => {
     try {
-      const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.signOut();
 
       if (error) {
