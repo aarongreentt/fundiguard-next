@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { initializeUserProfile } from '@/app/actions/profiles';
 import {
   Edit2,
   Mail,
@@ -50,6 +51,7 @@ interface TabInfo {
 
 export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean }) {
   const router = useRouter();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,6 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
     const loadProfile = async () => {
       try {
         console.log("[ProfilePage] Loading profile...");
-        const supabase = createSupabaseBrowserClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError) {
@@ -84,7 +85,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
 
         console.log("[ProfilePage] User found:", user.id);
 
-        const { data: profileData, error: profileError } = await supabase
+        let { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
@@ -94,6 +95,34 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
           console.error("[ProfilePage] Profile query error:", profileError);
           setError(profileError.message);
           return;
+        }
+
+        // Auto-create profile if it doesn't exist (for users who signed in before profile creation was auto)
+        if (!profileData) {
+          console.warn("[ProfilePage] Profile not found for user, attempting to auto-create...");
+          try {
+            await initializeUserProfile();
+            console.log("[ProfilePage] Profile auto-created, retrying query...");
+            
+            // Retry the query
+            const { data: newProfileData, error: retryError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .maybeSingle();
+            
+            if (retryError) {
+              console.error("[ProfilePage] Error retrying profile query:", retryError);
+              setError(retryError.message);
+              return;
+            }
+            
+            profileData = newProfileData;
+          } catch (createError) {
+            console.error("[ProfilePage] Error auto-creating profile:", createError);
+            setError('Failed to create profile');
+            return;
+          }
         }
 
         if (!profileData) {
@@ -131,7 +160,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
     };
 
     loadProfile();
-  }, [router]);
+  }, [supabase, router]);
 
   const handleSignOut = async () => {
     try {
