@@ -12,7 +12,7 @@ export async function AppHeader() {
   } = await supabase.auth.getUser();
 
   const role = user ? await getMyRole() : null;
-  const dashboardHref = role === "pro" ? "/pro-dashboard" : "/dashboard";
+  const dashboardHref = role === "fundi" ? "/pro-dashboard" : "/dashboard";
 
   return (
     <header className="border-b bg-background">

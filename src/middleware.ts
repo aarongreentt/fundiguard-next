@@ -61,7 +61,7 @@ export default async function middleware(request: NextRequest) {
 
     const role = profile?.role;
 
-    if (role !== "client" && role !== "pro") {
+    if (role !== "client" && role !== "fundi") {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/onboarding/role";
       return NextResponse.redirect(redirectUrl);
@@ -73,7 +73,7 @@ export default async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    if (request.nextUrl.pathname.startsWith("/pro-dashboard") && role !== "pro") {
+    if (request.nextUrl.pathname.startsWith("/pro-dashboard") && role !== "fundi") {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/dashboard";
       return NextResponse.redirect(redirectUrl);

@@ -27,7 +27,7 @@ export default async function Page() {
     redirect("/dashboard");
   }
 
-  if (data?.role === "pro") {
+  if (data?.role === "fundi") {
     redirect("/pro-dashboard");
   }
 
@@ -92,7 +92,7 @@ export default async function Page() {
                   className="hover:shadow-md transition-all"
                 >
                   <Label className="flex items-center gap-3 cursor-pointer mb-0">
-                    <input type="radio" name="role" value="pro" className="w-5 h-5" />
+                    <input type="radio" name="role" value="fundi" className="w-5 h-5" />
                     <div>
                       <p className="font-semibold" style={{ color: COLORS['text-dark'] }}>
                         I want to work

@@ -45,7 +45,7 @@ export default async function Page() {
   if (!role) {
     redirect("/onboarding/role");
   }
-  if (role !== "pro") {
+  if (role !== "fundi") {
     redirect("/dashboard");
   }
 

@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server-ssr";
 
-export type UserRole = "client" | "pro";
+export type UserRole = "client" | "fundi";
 
 export async function getMyRole(): Promise<UserRole | null> {
   const supabase = await createSupabaseServerClient();
@@ -21,5 +21,5 @@ export async function getMyRole(): Promise<UserRole | null> {
   }
 
   const role = data?.role;
-  return role === "client" || role === "pro" ? role : null;
+  return role === "client" || role === "fundi" ? role : null;
 }

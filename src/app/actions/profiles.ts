@@ -17,7 +17,7 @@ export async function setMyRole(formData: FormData) {
   }
 
   const role = String(formData.get("role") ?? "");
-  if (role !== "client" && role !== "pro") {
+  if (role !== "client" && role !== "fundi") {
     console.error("[setMyRole] Invalid role:", role);
     throw new Error("Invalid role");
   }
