@@ -41,6 +41,9 @@ export async function createJob(formData: FormData) {
     throw new Error("Maximum budget must be greater than minimum budget");
   }
 
+  // Format budget range as string (KES 1000 - KES 5000)
+  const budgetRange = `KES ${budgetMin.toLocaleString()} - KES ${budgetMax.toLocaleString()}`;
+
   console.log("[createJob] Creating job with:", {
     title,
     category,
@@ -48,6 +51,7 @@ export async function createJob(formData: FormData) {
     description,
     budgetMin,
     budgetMax,
+    budgetRange,
     latitude,
     longitude,
   });
@@ -59,8 +63,7 @@ export async function createJob(formData: FormData) {
     location,
     latitude,
     longitude,
-    budget_min: budgetMin,
-    budget_max: budgetMax,
+    budget_range: budgetRange,
     description,
     status: "open",
   })
