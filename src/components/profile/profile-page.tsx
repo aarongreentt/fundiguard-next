@@ -67,14 +67,22 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        console.log("[ProfilePage] Loading profile...");
         const supabase = createSupabaseBrowserClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        if (authError || !user) {
+        if (authError) {
+          console.error("[ProfilePage] Auth error:", authError);
+        }
+
+        if (!user) {
+          console.log("[ProfilePage] No user found, redirecting to sign-in");
           setError('Not authenticated');
           router.push('/sign-in');
           return;
         }
+
+        console.log("[ProfilePage] User found:", user.id);
 
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -83,14 +91,18 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
           .maybeSingle();
 
         if (profileError) {
+          console.error("[ProfilePage] Profile query error:", profileError);
           setError(profileError.message);
           return;
         }
 
         if (!profileData) {
+          console.error("[ProfilePage] No profile data found for user:", user.id);
           setError('Profile not found');
           return;
         }
+
+        console.log("[ProfilePage] Profile data loaded:", profileData);
 
         setProfile({
           id: profileData.id,

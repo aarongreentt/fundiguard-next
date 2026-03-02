@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
@@ -15,19 +15,24 @@ export function SupabaseAuthCard({
 }: {
   view: "sign_in" | "sign_up";
 }) {
-  const supabase = createSupabaseBrowserClient();
+  // Memoize the supabase client to prevent recreating it on every render
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   useEffect(() => {
     // Listen for auth state changes to auto-create profile on signup
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[SupabaseAuthCard] Auth state changed:", event, session?.user?.id);
+      
       // When user signs up (first time they get a session), create their profile
       if (event === "SIGNED_IN" && session?.user) {
         try {
-          await initializeUserProfile();
+          console.log("[SupabaseAuthCard] Initializing profile for user:", session.user.id);
+          const result = await initializeUserProfile();
+          console.log("[SupabaseAuthCard] Profile initialized successfully:", result);
         } catch (error) {
-          console.error("Failed to initialize profile:", error);
+          console.error("[SupabaseAuthCard] Failed to initialize profile:", error);
           // Don't block signup if profile creation fails - user can still proceed
         }
       }
