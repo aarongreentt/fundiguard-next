@@ -20,10 +20,6 @@ export async function createJob(formData: FormData) {
   const description = String(formData.get("description") ?? "");
   const budgetMin = Number(formData.get("budget_min") ?? 0);
   const budgetMax = Number(formData.get("budget_max") ?? 0);
-  
-  // Get latitude/longitude from location (defaulting to Nairobi center)
-  const latitude = Number(formData.get("latitude") ?? -1.2921);
-  const longitude = Number(formData.get("longitude") ?? 36.8219);
 
   if (!title.trim()) {
     throw new Error("Title is required");
@@ -52,8 +48,6 @@ export async function createJob(formData: FormData) {
     budgetMin,
     budgetMax,
     budgetRange,
-    latitude,
-    longitude,
   });
 
   const { data, error } = await supabase.from("jobs").insert({
@@ -61,8 +55,6 @@ export async function createJob(formData: FormData) {
     title,
     category,
     location,
-    latitude,
-    longitude,
     budget_range: budgetRange,
     description,
     status: "open",
