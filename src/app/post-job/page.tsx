@@ -86,18 +86,31 @@ export default function PostJobPage() {
   };
 
   const handleSubmit = async () => {
-    console.log('[PostJobPage] Submit button clicked');
+    console.log('[PostJobPage] 🚀 Submit button clicked');
     
     if (!validateStep(currentStep)) {
-      console.log('[PostJobPage] Validation failed on step:', currentStep);
+      console.log('[PostJobPage] ❌ Validation failed on step:', currentStep);
+      setSubmitError('Please complete all required fields on this step');
       return;
     }
 
     try {
       setIsSubmitting(true);
       setSubmitError(null);
-      console.log('[PostJobPage] Starting job submission with data:', formData);
-      console.log('[PostJobPage] Files count:', uploadedFiles.length);
+      
+      console.log('[PostJobPage] ✅ Validation passed');
+      console.log('[PostJobPage] 📝 Form data:', {
+        title: formData.title,
+        category: formData.category,
+        location: formData.location,
+        description: formData.description.substring(0, 50) + '...',
+        budget: `${formData.budget_min} - ${formData.budget_max}`,
+      });
+      console.log('[PostJobPage] 📸 Files to upload:', uploadedFiles.length);
+      
+      uploadedFiles.forEach((file, idx) => {
+        console.log(`[PostJobPage] File ${idx + 1}: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+      });
 
       // Create FormData for submission
       const submitFormData = new FormData();
@@ -108,21 +121,58 @@ export default function PostJobPage() {
       submitFormData.append('budget_min', formData.budget_min);
       submitFormData.append('budget_max', formData.budget_max);
 
+      console.log('[PostJobPage] 📦 FormData entries before adding files:');
+      for (let [key, value] of (submitFormData as any).entries()) {
+        if (value instanceof File) {
+          console.log(`  - ${key}: [File: ${value.name}]`);
+        } else {
+          console.log(`  - ${key}: ${value}`);
+        }
+      }
+
       // Add images
+      console.log('[PostJobPage] 🎬 Adding files to FormData...');
       uploadedFiles.forEach((file) => {
         submitFormData.append('files', file);
+        console.log(`[PostJobPage] ✓ Added file: ${file.name}`);
       });
 
-      console.log('[PostJobPage] Calling server action handleCreateJobWithImages');
+      console.log('[PostJobPage] 🌐 Calling server action handleCreateJobWithImages...');
+      console.log('[PostJobPage] ⏱️ Submission started at:', new Date().toISOString());
       
       // Call server action
-      await handleCreateJobWithImages(submitFormData);
-
-      console.log('[PostJobPage] Job posted successfully, redirecting to dashboard');
-      // The server action handles the redirect, but we can update UI if needed
+      const result = await handleCreateJobWithImages(submitFormData);
+      
+      console.log('[PostJobPage] ✅ Server action completed, result:', result);
+      console.log('[PostJobPage] 🎉 Job posted successfully, redirecting to browse...');
     } catch (error) {
-      console.error('[PostJobPage] Error submitting job:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to post job. Please try again.');
+      console.error('[PostJobPage] ❌ Error submitting job:', error);
+      
+      // Extract error message
+      let errorMessage = 'Failed to post job. Please try again.';
+      let errorDetails: any = {};
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        errorDetails = {
+          message: error.message,
+          stack: error.stack,
+        };
+      } else if (typeof error === 'object' && error !== null) {
+        // Check for Next.js redirect error (which is expected)
+        const errorObj = error as Record<string, any>;
+        if (errorObj.digest && errorObj.digest.includes('NEXT_REDIRECT')) {
+          console.log('[PostJobPage] ✅ Redirect detected - job posting succeeded!');
+          return; // Don't show error for redirect
+        }
+        errorMessage = errorObj.message || JSON.stringify(error);
+        errorDetails = errorObj;
+      }
+      
+      console.error('[PostJobPage] Error details:', errorDetails);
+      setSubmitError(
+        `Failed to post job: ${errorMessage}. Please try again or contact support.`
+      );
     } finally {
       setIsSubmitting(false);
     }
