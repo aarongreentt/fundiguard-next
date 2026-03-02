@@ -261,7 +261,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
       const fetchRatings = async () => {
         try {
           console.log('[ProfilePage] Fetching reviews for:', profile.id);
-          const response = await fetch(`/api/reviews?fundiId=${profile.id}`);
+          const response = await fetch(`/api/reviews?userId=${profile.id}`);
           if (response.ok) {
             const data = await response.json();
             console.log('[ProfilePage] Reviews loaded:', data);
