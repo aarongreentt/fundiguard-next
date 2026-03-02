@@ -12,13 +12,17 @@ export async function setMyRole(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.error("[setMyRole] No user found");
     throw new Error("You must be signed in to continue");
   }
 
   const role = String(formData.get("role") ?? "");
   if (role !== "client" && role !== "pro") {
+    console.error("[setMyRole] Invalid role:", role);
     throw new Error("Invalid role");
   }
+
+  console.log("[setMyRole] Setting role for user:", user.id, "role:", role);
 
   const { error } = await supabase.from("profiles").upsert(
     {
@@ -29,8 +33,16 @@ export async function setMyRole(formData: FormData) {
   );
 
   if (error) {
-    throw new Error(error.message);
+    console.error("[setMyRole] Database error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw new Error(`Failed to set role: ${error.message}`);
   }
+
+  console.log("[setMyRole] Role updated successfully for user:", user.id);
 
   revalidatePath("/");
   revalidatePath("/dashboard");
@@ -46,6 +58,7 @@ export async function updateServiceArea(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.error("[updateServiceArea] No user found");
     throw new Error("You must be signed in to continue");
   }
 
@@ -54,8 +67,15 @@ export async function updateServiceArea(formData: FormData) {
   const serviceRadiusKm = Number(formData.get("serviceRadiusKm") ?? 15);
 
   if (!serviceLatitude || !serviceLongitude) {
+    console.error("[updateServiceArea] Missing service location");
     throw new Error("Service location is required");
   }
+
+  console.log("[updateServiceArea] Updating service area for user:", user.id, {
+    latitude: serviceLatitude,
+    longitude: serviceLongitude,
+    radius: serviceRadiusKm,
+  });
 
   const { error } = await supabase
     .from("profiles")
@@ -67,8 +87,15 @@ export async function updateServiceArea(formData: FormData) {
     .eq("id", user.id);
 
   if (error) {
-    throw new Error(error.message);
+    console.error("[updateServiceArea] Database error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    });
+    throw new Error(`Failed to update service area: ${error.message}`);
   }
+
+  console.log("[updateServiceArea] Service area updated successfully");
 
   revalidatePath("/pro-dashboard");
   revalidatePath("/profile");

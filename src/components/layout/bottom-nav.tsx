@@ -2,24 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Home, Search, Plus, Briefcase, User, LogIn } from 'lucide-react';
 import { COLORS } from '@/lib/design-tokens';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { useSupabaseClient } from '@/lib/hooks/useSupabaseClient';
 
 export function BottomNav() {
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = useMemo(() => {
-    try {
-      return createSupabaseBrowserClient();
-    } catch (error) {
-      console.warn('Supabase initialization error:', error);
-      return null;
-    }
-  }, []);
+  // Use shared Supabase client to avoid multiple instances
+  const supabase = useSupabaseClient();
 
   useEffect(() => {
     if (!supabase) {

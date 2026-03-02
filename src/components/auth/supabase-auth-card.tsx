@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useSupabaseClient } from "@/lib/hooks/useSupabaseClient";
 import { initializeUserProfile } from "@/app/actions/profiles";
 
 export function SupabaseAuthCard({
@@ -17,8 +17,8 @@ export function SupabaseAuthCard({
   view: "sign_in" | "sign_up";
 }) {
   const router = useRouter();
-  // Memoize the supabase client to prevent recreating it on every render
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  // Use shared Supabase client to avoid multiple instances
+  const supabase = useSupabaseClient();
 
   useEffect(() => {
     // Listen for auth state changes to auto-create profile on signup and redirect on signin

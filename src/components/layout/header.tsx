@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, Search, Globe, LogOut } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { COLORS, SHADOWS } from '@/lib/design-tokens';
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { useSupabaseClient } from '@/lib/hooks/useSupabaseClient';
 import { useRouter } from 'next/navigation';
 
 export function Header() {
@@ -16,16 +16,8 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Safely initialize Supabase client
-  const supabase = useMemo(() => {
-    try {
-      const client = createSupabaseBrowserClient();
-      return client;
-    } catch (error) {
-      console.warn('Supabase initialization error:', error);
-      return null;
-    }
-  }, []);
+  // Use shared Supabase client to avoid multiple instances
+  const supabase = useSupabaseClient();
 
   // Check authentication status on mount and listen for changes
   useEffect(() => {
