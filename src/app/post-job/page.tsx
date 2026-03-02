@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { CheckCircle2, FileText, MapPin, Camera, DollarSign, ArrowRight } from 'lucide-react';
+import { CheckCircle2, FileText, MapPin, Camera, DollarSign, ArrowRight, Loader } from 'lucide-react';
 import { COLORS, ANIMATIONS, SHADOWS, BORDER_RADIUS } from '@/lib/design-tokens';
 import { ModernFormInput } from '@/components/forms/modern-form-input';
 import { ModernFormTextarea } from '@/components/forms/modern-form-textarea';
 import { ModernCategorySelector } from '@/components/forms/modern-category-selector';
 import { ModernImageUploader } from '@/components/forms/modern-image-uploader';
+import { handleCreateJobWithImages } from '@/app/actions/post-job';
 
 const STEPS = [
   { id: 1, name: 'Job Details', icon: FileText },
@@ -20,6 +21,8 @@ const STEPS = [
 export default function PostJobPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -83,10 +86,45 @@ export default function PostJobPage() {
   };
 
   const handleSubmit = async () => {
-    if (validateStep(currentStep)) {
-      // TODO: Submit to server action
-      console.log('Submitting job:', { formData, uploadedFiles });
-      // router.push('/dashboard');
+    console.log('[PostJobPage] Submit button clicked');
+    
+    if (!validateStep(currentStep)) {
+      console.log('[PostJobPage] Validation failed on step:', currentStep);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      console.log('[PostJobPage] Starting job submission with data:', formData);
+      console.log('[PostJobPage] Files count:', uploadedFiles.length);
+
+      // Create FormData for submission
+      const submitFormData = new FormData();
+      submitFormData.append('title', formData.title);
+      submitFormData.append('description', formData.description);
+      submitFormData.append('category', formData.category);
+      submitFormData.append('location', formData.location);
+      submitFormData.append('budget_min', formData.budget_min);
+      submitFormData.append('budget_max', formData.budget_max);
+
+      // Add images
+      uploadedFiles.forEach((file) => {
+        submitFormData.append('files', file);
+      });
+
+      console.log('[PostJobPage] Calling server action handleCreateJobWithImages');
+      
+      // Call server action
+      await handleCreateJobWithImages(submitFormData);
+
+      console.log('[PostJobPage] Job posted successfully, redirecting to dashboard');
+      // The server action handles the redirect, but we can update UI if needed
+    } catch (error) {
+      console.error('[PostJobPage] Error submitting job:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Failed to post job. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -481,15 +519,30 @@ export default function PostJobPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-8 flex gap-4 justify-between"
+          className="mt-8 flex gap-4 justify-between flex-col md:flex-row"
         >
+          {submitError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full p-4 rounded-lg flex items-start gap-3"
+              style={{
+                backgroundColor: `${COLORS['danger']}15`,
+                borderLeft: `4px solid ${COLORS['danger']}`,
+              }}
+            >
+              <div className="text-red-600 font-bold">⚠️</div>
+              <p style={{ color: COLORS['text-dark'] }}>{submitError}</p>
+            </motion.div>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handlePrevious}
-            disabled={currentStep === 1}
+            disabled={currentStep === 1 || isSubmitting}
             className={`px-8 py-3 rounded-full font-bold transition-all ${
-              currentStep === 1 ? 'opacity-50 cursor-not-allowed' : ''
+              currentStep === 1 || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
             }`}
             style={{
               backgroundColor: COLORS['bg-light'],
@@ -505,6 +558,7 @@ export default function PostJobPage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleNext}
+              disabled={isSubmitting}
               className="px-8 py-3 rounded-full font-bold text-white transition-all flex items-center gap-2"
               style={{
                 backgroundColor: COLORS['trust-green'],
@@ -517,12 +571,22 @@ export default function PostJobPage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleSubmit}
-              className="px-8 py-3 rounded-full font-bold text-white transition-all flex items-center gap-2"
+              disabled={isSubmitting}
+              className="px-8 py-3 rounded-full font-bold text-white transition-all flex items-center gap-2 disabled:opacity-50"
               style={{
                 backgroundColor: COLORS['energy-orange'],
               }}
             >
-              Post Job <CheckCircle2 size={18} />
+              {isSubmitting ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  Post Job <CheckCircle2 size={18} />
+                </>
+              )}
             </motion.button>
           )}
         </motion.div>
