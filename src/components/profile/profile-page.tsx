@@ -59,6 +59,8 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
   const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
+  const [specialties, setSpecialties] = useState<any[]>([]);
+  const [serviceAreas, setServiceAreas] = useState<any[]>([]);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [portfolioForm, setPortfolioForm] = useState({
     title: '',
@@ -67,6 +69,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   });
   const [portfolioImage, setPortfolioImage] = useState<File | null>(null);
   const [portfolioPreview, setPortfolioPreview] = useState<string>('');
+  const [ratings, setRatings] = useState({ average: 0, count: 0, jobs: 0 });
   const [settings, setSettings] = useState({
     private_profile: false,
     show_phone: true,
@@ -205,6 +208,78 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
         }
       };
       fetchPortfolio();
+    }
+  }, [profile?.id, profile?.user_type]);
+
+  // Fetch specialties for fundis
+  useEffect(() => {
+    if (profile?.user_type === 'fundi' && profile.id) {
+      const fetchSpecialties = async () => {
+        try {
+          console.log('[ProfilePage] Fetching specialties for:', profile.id);
+          const response = await fetch(`/api/specialties?fundiId=${profile.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[ProfilePage] Specialties loaded:', data);
+            setSpecialties(data?.map((s: any) => s.specialty) || []);
+          } else {
+            console.error('[ProfilePage] Failed to fetch specialties');
+          }
+        } catch (error) {
+          console.error('[ProfilePage] Error fetching specialties:', error);
+        }
+      };
+      fetchSpecialties();
+    }
+  }, [profile?.id, profile?.user_type]);
+
+  // Fetch service areas for fundis
+  useEffect(() => {
+    if (profile?.user_type === 'fundi' && profile.id) {
+      const fetchServiceAreas = async () => {
+        try {
+          console.log('[ProfilePage] Fetching service areas for:', profile.id);
+          const response = await fetch(`/api/service-areas?fundiId=${profile.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[ProfilePage] Service areas loaded:', data);
+            setServiceAreas(data?.map((s: any) => s.area_name) || []);
+          } else {
+            console.error('[ProfilePage] Failed to fetch service areas');
+          }
+        } catch (error) {
+          console.error('[ProfilePage] Error fetching service areas:', error);
+        }
+      };
+      fetchServiceAreas();
+    }
+  }, [profile?.id, profile?.user_type]);
+
+  // Fetch reviews/ratings for fundis
+  useEffect(() => {
+    if (profile?.user_type === 'fundi' && profile.id) {
+      const fetchRatings = async () => {
+        try {
+          console.log('[ProfilePage] Fetching reviews for:', profile.id);
+          const response = await fetch(`/api/reviews?fundiId=${profile.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[ProfilePage] Reviews loaded:', data);
+            const totalReviews = data?.length || 0;
+            const averageRating = totalReviews > 0 
+              ? data.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / totalReviews 
+              : 0;
+            setRatings({
+              average: Math.round(averageRating * 10) / 10,
+              count: totalReviews,
+              jobs: totalReviews, // Approximation - would need more data
+            });
+          }
+        } catch (error) {
+          console.error('[ProfilePage] Error fetching reviews:', error);
+        }
+      };
+      fetchRatings();
     }
   }, [profile?.id, profile?.user_type]);
 
@@ -630,11 +705,11 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                 <FundiProfileSection
                   profile={{
                     hourly_rate: profile.hourly_rate,
-                    average_rating: 4.8,
-                    total_reviews: 47,
-                    total_jobs: 47,
-                    specialties: ['Electrical', 'Installation', 'Repairs'],
-                    service_areas: ['Nairobi CBD', 'Westlands', 'Karen'],
+                    average_rating: ratings.average,
+                    total_reviews: ratings.count,
+                    total_jobs: ratings.jobs,
+                    specialties: specialties,
+                    service_areas: serviceAreas,
                     portfolio_items: portfolioItems.map(item => ({
                       id: item.id,
                       title: item.title,
