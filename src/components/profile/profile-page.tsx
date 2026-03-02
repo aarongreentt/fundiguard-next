@@ -50,23 +50,9 @@ interface TabInfo {
 
 export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean }) {
   const router = useRouter();
-  const [profile, setProfile] = useState<ProfileData>({
-    id: 'user-123',
-    first_name: 'John',
-    last_name: 'Ochieng',
-    phone: '+254 712 345 678',
-    email: 'john@example.com',
-    location: 'Nairobi, Kenya',
-    bio: 'Professional electrician with 8+ years of experience',
-    avatar_url: '👨',
-    user_type: 'fundi',
-    hourly_rate: 1500,
-    experience_years: 8,
-    completion_percentage: 85,
-    is_pro: true,
-    verification_status: 'verified',
-  });
-
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('profile');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [settings, setSettings] = useState({
@@ -77,6 +63,63 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
     sms_notifications: true,
     marketing_emails: false,
   });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+          setError('Not authenticated');
+          router.push('/sign-in');
+          return;
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          setError(profileError.message);
+          return;
+        }
+
+        if (!profileData) {
+          setError('Profile not found');
+          return;
+        }
+
+        setProfile({
+          id: profileData.id,
+          first_name: profileData.first_name || '',
+          last_name: profileData.last_name || '',
+          phone: profileData.phone,
+          email: user.email,
+          location: profileData.location,
+          bio: profileData.bio,
+          avatar_url: profileData.avatar_url,
+          user_type: profileData.role || 'client',
+          hourly_rate: profileData.hourly_rate,
+          experience_years: profileData.experience_years,
+          preferred_budget_min: profileData.preferred_budget_min,
+          preferred_budget_max: profileData.preferred_budget_max,
+          completion_percentage: profileData.completion_percentage || 0,
+          is_pro: profileData.is_pro || false,
+          verification_status: profileData.verification_status || 'not_started',
+        });
+      } catch (err) {
+        console.error('[ProfilePage] Error loading profile:', err);
+        setError('Failed to load profile');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [router]);
 
   const handleSignOut = async () => {
     try {
@@ -103,7 +146,7 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   const tabs: TabInfo[] = [
     { id: 'profile', label: 'Profile', enabled: true },
     { id: 'reviews', label: 'Reviews', enabled: true },
-    { id: 'verification', label: 'Verification', enabled: profile.user_type === 'fundi' },
+    { id: 'verification', label: 'Verification', enabled: profile?.user_type === 'fundi' },
     { id: 'preferences', label: 'Preferences', enabled: true },
     { id: 'settings', label: 'Settings', enabled: isOwnProfile },
   ];
@@ -116,16 +159,51 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
   };
 
   const handleProfileUpdate = (updatedData: Partial<ProfileData>) => {
-    setProfile((prev) => ({
-      ...prev,
-      ...updatedData,
-      completion_percentage: Math.min(
-        100,
-        (Object.keys(updatedData).length / 8) * 100
-      ),
-    }));
+    if (!profile) return;
+    setProfile((prev) => 
+      prev ? {
+        ...prev,
+        ...updatedData,
+        completion_percentage: Math.min(
+          100,
+          (Object.keys(updatedData).length / 8) * 100
+        ),
+      } : null
+    );
     setIsEditingProfile(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: COLORS['bg-light'] }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="w-12 h-12 border-4 rounded-full"
+          style={{ borderColor: COLORS['energy-orange'], borderTopColor: 'transparent' }}
+        />
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: COLORS['bg-light'] }}>
+        <div className="text-center">
+          <p className="text-lg font-bold mb-4" style={{ color: COLORS['danger'] }}>
+            {error || 'Profile not found'}
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-6 py-2 rounded-lg font-bold text-white"
+            style={{ backgroundColor: COLORS['energy-orange'] }}
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
