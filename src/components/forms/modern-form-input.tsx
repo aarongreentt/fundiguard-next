@@ -48,8 +48,10 @@ export function ModernFormInput({
             color: COLORS['text-dark'],
             borderColor: error ? '#ef4444' : '#e5e7eb',
             boxShadow: error ? undefined : SHADOWS.sm,
+            pointerEvents: 'auto',
           }}
           onFocus={(e) => {
+            console.log('[ModernFormInput] Focus on input:', (e.target as HTMLInputElement).name || 'unnamed');
             e.currentTarget.style.borderColor = COLORS['trust-green'];
             e.currentTarget.style.boxShadow = SHADOWS.md;
           }}

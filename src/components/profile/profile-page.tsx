@@ -385,7 +385,10 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setIsEditingProfile(true)}
+                    onClick={() => {
+                      console.log("[ProfilePage] Edit Profile button clicked");
+                      setIsEditingProfile(true);
+                    }}
                     className="px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all"
                     style={{
                       backgroundColor: COLORS['energy-orange'],
@@ -548,17 +551,31 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          style={{ backdropFilter: 'blur(4px)' }}
-          onClick={() => setIsEditingProfile(false)}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ 
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            pointerEvents: 'auto'
+          }}
+          onClick={() => {
+            console.log("[ProfilePage] Modal background clicked, closing");
+            setIsEditingProfile(false);
+          }}
         >
           <motion.div
             initial={{ scale: 0.95 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.95 }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              console.log("[ProfilePage] Modal content clicked (should not close)");
+              e.stopPropagation();
+            }}
             className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6"
-            style={{ boxShadow: SHADOWS.xl }}
+            style={{ 
+              boxShadow: SHADOWS.xl,
+              zIndex: 10000,
+              pointerEvents: 'auto'
+            }}
           >
             <h2
               className="text-2xl font-bold mb-6"
@@ -570,9 +587,13 @@ export function ProfilePage({ isOwnProfile = true }: { isOwnProfile?: boolean })
               userType={profile.user_type || 'fundi'}
               initialData={profile}
               onSave={async (data) => {
+                console.log("[ProfilePage] Profile save requested with data:", data);
                 await Promise.resolve(handleProfileUpdate(data));
               }}
-              onCancel={() => setIsEditingProfile(false)}
+              onCancel={() => {
+                console.log("[ProfilePage] Edit form cancelled");
+                setIsEditingProfile(false);
+              }}
             />
           </motion.div>
         </motion.div>
