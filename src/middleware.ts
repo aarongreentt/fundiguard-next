@@ -8,7 +8,9 @@ function isProtectedPath(pathname: string) {
   return (
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/pro-dashboard") ||
-    pathname.startsWith("/post-job")
+    pathname.startsWith("/post-job") ||
+    pathname.startsWith("/insurance") ||
+    pathname.startsWith("/chat")
   );
 }
 
