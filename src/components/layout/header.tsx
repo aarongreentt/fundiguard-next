@@ -13,11 +13,43 @@ export function Header() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   // Use shared Supabase client to avoid multiple instances
   const supabase = useSupabaseClient();
+
+  // Fetch user profile
+  const fetchProfile = async (userId: string) => {
+    if (!supabase) {
+      console.warn('[Header] Supabase not available');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, avatar_url')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[Header] Error fetching profile:', error);
+        return;
+      }
+
+      if (data) {
+        setProfileName(data.first_name);
+        setProfileAvatar(data.avatar_url);
+        console.log('[Header] Profile loaded:', data.first_name);
+      }
+    } catch (err) {
+      console.error('[Header] Error fetching profile:', err);
+    }
+  };
 
   // Check authentication status on mount and listen for changes
   useEffect(() => {
@@ -32,6 +64,10 @@ export function Header() {
         const { data: { user } } = await supabase.auth.getUser();
         console.log("[Header] Current user:", user?.id);
         setIsAuthenticated(!!user);
+        if (user) {
+          setUserId(user.id);
+          await fetchProfile(user.id);
+        }
         setIsLoading(false);
       } catch (error) {
         console.warn('[Header] Error checking auth:', error);
@@ -45,15 +81,22 @@ export function Header() {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[Header] Auth state changed:", event, session?.user?.id);
       
       if (event === "SIGNED_OUT") {
         console.log("[Header] User signed out");
         setIsAuthenticated(false);
+        setProfileName(null);
+        setProfileAvatar(null);
+        setUserId(null);
       } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         console.log("[Header] User signed in/updated");
         setIsAuthenticated(!!session?.user);
+        if (session?.user) {
+          setUserId(session.user.id);
+          await fetchProfile(session.user.id);
+        }
       }
     });
 
@@ -170,12 +213,25 @@ export function Header() {
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                   className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                    style={{ backgroundColor: COLORS['energy-orange'] }}
-                  >
-                    U
-                  </div>
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt={profileName || 'Profile'}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      style={{ backgroundColor: COLORS['energy-orange'] }}
+                    >
+                      {profileName ? profileName[0].toUpperCase() : 'U'}
+                    </div>
+                  )}
+                  {profileName && (
+                    <span className="text-sm font-medium hidden sm:inline" style={{ color: COLORS['text-dark'] }}>
+                      {profileName}
+                    </span>
+                  )}
                 </button>
 
                 {/* Profile Dropdown */}
