@@ -48,18 +48,31 @@ export function BrowseJobsMap({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !env.NEXT_PUBLIC_TOMTOM_API_KEY) return;
+    console.log('[BrowseJobsMap] Initializing with', jobs.length, 'jobs');
+    if (!mapContainer.current) {
+      console.warn('[BrowseJobsMap] No container ref');
+      return;
+    }
+    if (!env.NEXT_PUBLIC_TOMTOM_API_KEY) {
+      console.error('[BrowseJobsMap] ❌ TomTom API key not found');
+      return;
+    }
 
     const initMap = async () => {
       try {
+        console.log('[BrowseJobsMap] 🚀 Loading TomTom...');
         const ttModule = await getTT();
         if (!ttModule) return;
 
         // Calculate bounds from all jobs
-        if (jobs.length === 0) return;
+        if (jobs.length === 0) {
+          console.warn('[BrowseJobsMap] No jobs to display on map');
+          return;
+        }
 
         const lats = jobs.map((j) => j.latitude);
         const lons = jobs.map((j) => j.longitude);
+        console.log('[BrowseJobsMap] Job coordinates: lats:', lats, 'lons:', lons);
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
         const minLon = Math.min(...lons);
@@ -69,6 +82,7 @@ export function BrowseJobsMap({
         const centerLat = (minLat + maxLat) / 2;
         const centerLon = (minLon + maxLon) / 2;
 
+        console.log('[BrowseJobsMap] 🗺️ Creating map at center [', centerLon, ',', centerLat, ']');
         map.current = ttModule.map({
           key: env.NEXT_PUBLIC_TOMTOM_API_KEY!,
           container: mapContainer.current,
@@ -79,8 +93,10 @@ export function BrowseJobsMap({
           scrollZoom: true,
           dragPan: true,
         });
+        console.log('[BrowseJobsMap] ✅ Map created');
 
         // Add markers for jobs
+        console.log('[BrowseJobsMap] 📍 Adding', jobs.length, 'markers...');
         jobs.forEach((job) => {
           const color = job.status === 'open' ? '#10b981' : '#8b5cf6'; // green for open, purple for closed
           const marker = new ttModule.Marker({
@@ -91,11 +107,13 @@ export function BrowseJobsMap({
 
           // Click marker to show job details
           marker.getElement().addEventListener('click', () => {
+            console.log('[BrowseJobsMap] Selected job:', job.id, job.title);
             setSelectedJob(job);
           });
 
           markers.current.set(job.id, marker);
         });
+        console.log('[BrowseJobsMap] ✅ All markers added');
       } catch (error) {
         console.error('Error initializing map:', error);
       }

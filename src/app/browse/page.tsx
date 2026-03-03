@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapIcon, List, X } from 'lucide-react';
 import { COLORS, ANIMATIONS, SHADOWS } from '@/lib/design-tokens';
@@ -9,13 +9,56 @@ import { ModernCategoryGrid } from '@/components/categories/modern-category-grid
 import { BrowseJobsMap } from '@/components/maps/browse-jobs-map';
 import { mockJobs } from '@/lib/mock-data';
 
+type Job = {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  budget_range: string;
+  status: string;
+  description?: string;
+  client_id?: string;
+  created_at?: string;
+  image_url?: string;
+  image_count?: number;
+  latitude?: number;
+  longitude?: number;
+};
+
 export default function BrowsePage() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [jobs, setJobs] = useState<Job[]>(mockJobs as any);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch jobs from database
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        console.log('[BrowsePage] Fetching jobs from database...');
+        const response = await fetch('/api/jobs', { method: 'GET' });
+        if (!response.ok) {
+          console.error('[BrowsePage] Failed to fetch jobs:', response.status);
+          setJobs(mockJobs as any);
+          setLoading(false);
+          return;
+        }
+        const data = await response.json();
+        console.log('[BrowsePage] Fetched', data.length || 0, 'jobs');
+        setJobs(data);
+      } catch (error) {
+        console.error('[BrowsePage] Error fetching jobs:', error);
+        setJobs(mockJobs as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobs();
+  }, []);
 
   // Filter jobs based on selected category and search term
-  const filteredJobs = mockJobs.filter(job => {
+  const filteredJobs = jobs.filter(job => {
     const matchesCategory = !selectedCategory || job.category.toLowerCase() === selectedCategory.toLowerCase();
     const matchesSearch = !searchTerm || 
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,9 +70,9 @@ export default function BrowsePage() {
     id: job.id,
     title: job.title,
     location: job.location,
-    latitude: 51.5074,
-    longitude: -0.1278,
-    budget_range: job.budgetRange,
+    latitude: job.latitude || -1.2921, // Default to Nairobi if not set
+    longitude: job.longitude || 36.8219, // Default to Nairobi if not set
+    budget_range: job.budget_range || (job as any).budgetRange,
     status: job.status,
   }));
 
@@ -208,8 +251,9 @@ export default function BrowsePage() {
                     title={job.title}
                     location={job.location}
                     category={job.category}
-                    budget_range={job.budgetRange}
+                    budget_range={job.budget_range || (job as any).budgetRange}
                     status={job.status as 'open' | 'assigned'}
+                    image={job.image_url || undefined}
                     index={i}
                   />
                 ))}

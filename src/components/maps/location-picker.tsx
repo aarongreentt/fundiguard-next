@@ -38,13 +38,23 @@ export function LocationPicker({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || !env.NEXT_PUBLIC_TOMTOM_API_KEY) return;
+    console.log('[LocationPicker] Initializing location picker');
+    if (!mapContainer.current) {
+      console.warn('[LocationPicker] No container ref');
+      return;
+    }
+    if (!env.NEXT_PUBLIC_TOMTOM_API_KEY) {
+      console.error('[LocationPicker] ❌ TomTom API key not found');
+      return;
+    }
 
     const initMap = async () => {
       try {
+        console.log('[LocationPicker] 🚀 Loading TomTom modules...');
         const { tt: ttModule, services: servicesModule } = await getTTModules();
         setTT(ttModule);
         setServices(servicesModule);
+        console.log('[LocationPicker] 🗺️ Creating map at [', initialLocation.longitude, ',', initialLocation.latitude, ']');
 
         map.current = ttModule.map({
           key: env.NEXT_PUBLIC_TOMTOM_API_KEY!,
@@ -56,6 +66,7 @@ export function LocationPicker({
           scrollZoom: true,
           dragPan: true,
         });
+        console.log('[LocationPicker] ✅ Map created');
 
         // Add initial marker
         marker.current = new ttModule.Marker({

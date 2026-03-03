@@ -10,12 +10,28 @@ CREATE TABLE IF NOT EXISTS public.jobs (
   description TEXT NOT NULL,
   category VARCHAR(100) NOT NULL,
   location VARCHAR(255) NOT NULL,
+  latitude DECIMAL(10, 8),
+  longitude DECIMAL(11, 8),
   budget_range VARCHAR(100) NOT NULL, -- Format: "KES 1,000 - KES 5,000"
   status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'completed', 'cancelled', 'closed')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_jobs_client FOREIGN KEY (client_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
+
+-- Add missing columns to existing jobs table if they don't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'latitude') THEN
+    ALTER TABLE public.jobs ADD COLUMN latitude DECIMAL(10, 8);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'longitude') THEN
+    ALTER TABLE public.jobs ADD COLUMN longitude DECIMAL(11, 8);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'updated_at') THEN
+    ALTER TABLE public.jobs ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+  END IF;
+END $$;
 
 -- 13. Job Images Table
 CREATE TABLE IF NOT EXISTS public.job_images (
@@ -31,17 +47,34 @@ CREATE TABLE IF NOT EXISTS public.job_images (
 CREATE TABLE IF NOT EXISTS public.bids (
   id BIGSERIAL PRIMARY KEY,
   job_id UUID NOT NULL,
-  fundi_id UUID NOT NULL,
-  proposed_budget DECIMAL(15, 2),
+  pro_id UUID NOT NULL,
+  amount DECIMAL(15, 2),
   estimated_days INT,
-  proposal_text TEXT,
+  message TEXT,
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_bids_job FOREIGN KEY (job_id) REFERENCES public.jobs(id) ON DELETE CASCADE,
-  CONSTRAINT fk_bids_fundi FOREIGN KEY (fundi_id) REFERENCES public.pro_profiles(id) ON DELETE CASCADE,
-  UNIQUE(job_id, fundi_id)
+  CONSTRAINT fk_bids_pro FOREIGN KEY (pro_id) REFERENCES public.pro_profiles(id) ON DELETE CASCADE,
+  UNIQUE(job_id, pro_id)
 );
+
+-- Add missing columns to existing bids table if they don't exist
+DO $$ 
+BEGIN
+  -- Rename fundi_id to pro_id if it exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bids' AND column_name = 'fundi_id') THEN
+    ALTER TABLE public.bids RENAME COLUMN fundi_id TO pro_id;
+  END IF;
+  -- Rename proposed_budget to amount if it exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bids' AND column_name = 'proposed_budget') THEN
+    ALTER TABLE public.bids RENAME COLUMN proposed_budget TO amount;
+  END IF;
+  -- Rename proposal_text to message if it exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bids' AND column_name = 'proposal_text') THEN
+    ALTER TABLE public.bids RENAME COLUMN proposal_text TO message;
+  END IF;
+END $$;
 
 -- ========== INDEXES FOR PERFORMANCE ==========
 CREATE INDEX IF NOT EXISTS idx_jobs_client ON public.jobs(client_id);
@@ -50,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_category ON public.jobs(category);
 CREATE INDEX IF NOT EXISTS idx_jobs_created ON public.jobs(created_at);
 CREATE INDEX IF NOT EXISTS idx_job_images_job ON public.job_images(job_id);
 CREATE INDEX IF NOT EXISTS idx_bids_job ON public.bids(job_id);
-CREATE INDEX IF NOT EXISTS idx_bids_fundi ON public.bids(fundi_id);
+CREATE INDEX IF NOT EXISTS idx_bids_pro ON public.bids(pro_id);
 CREATE INDEX IF NOT EXISTS idx_bids_status ON public.bids(status);
 
 -- ========== ROW LEVEL SECURITY POLICIES ==========
@@ -129,7 +162,7 @@ ALTER TABLE public.bids ENABLE ROW LEVEL SECURITY;
 -- Allow fundis to view bids on open jobs
 CREATE POLICY "Fundis can view bids on open jobs" ON public.bids
   FOR SELECT USING (
-    fundi_id = auth.uid() OR
+    pro_id = auth.uid() OR
     EXISTS (
       SELECT 1 FROM public.jobs
       WHERE id = bids.job_id AND client_id = auth.uid()
@@ -139,7 +172,7 @@ CREATE POLICY "Fundis can view bids on open jobs" ON public.bids
 -- Allow fundis to create bids
 CREATE POLICY "Fundis can create bids" ON public.bids
   FOR INSERT WITH CHECK (
-    fundi_id = auth.uid() AND
+    pro_id = auth.uid() AND
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid() AND role = 'fundi'
@@ -161,6 +194,8 @@ SELECT
   j.description,
   j.category,
   j.location,
+  j.latitude,
+  j.longitude,
   j.budget_range,
   j.status,
   j.created_at,
@@ -178,6 +213,8 @@ SELECT
   j.title,
   j.category,
   j.location,
+  j.latitude,
+  j.longitude,
   j.budget_range,
   j.status,
   j.created_at,

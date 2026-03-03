@@ -24,6 +24,8 @@ export async function createJob(formData: FormData) {
   const title = String(formData.get("title") ?? "");
   const category = String(formData.get("category") ?? "");
   const location = String(formData.get("location") ?? "");
+  const latitude = Number(formData.get("latitude") ?? 0);
+  const longitude = Number(formData.get("longitude") ?? 0);
   const description = String(formData.get("description") ?? "");
   const budgetMin = Number(formData.get("budget_min") ?? 0);
   const budgetMax = Number(formData.get("budget_max") ?? 0);
@@ -32,6 +34,8 @@ export async function createJob(formData: FormData) {
     title: title.length > 0 ? '✓' : '✗',
     category: category.length > 0 ? '✓' : '✗',
     location: location.length > 0 ? '✓' : '✗',
+    latitude,
+    longitude,
     description: description.length > 0 ? '✓' : '✗',
     budgetMin,
     budgetMax,
@@ -69,6 +73,8 @@ export async function createJob(formData: FormData) {
     title,
     category,
     location,
+    latitude,
+    longitude,
     budget_range: budgetRange,
     status: 'open',
   });
@@ -78,6 +84,8 @@ export async function createJob(formData: FormData) {
     title,
     category,
     location,
+    latitude,
+    longitude,
     budget_range: budgetRange,
     description,
     status: "open",
@@ -146,4 +154,49 @@ export async function deleteJob(jobId: string) {
   revalidatePath("/browse");
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export async function updateJobStatus(
+  jobId: string,
+  newStatus: "open" | "in_progress" | "completed" | "cancelled" | "closed"
+) {
+  console.log('[updateJobStatus] 🔄 Updating job', jobId, 'to status:', newStatus);
+  
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be signed in to update a job");
+  }
+
+  // Verify the user owns the job
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("client_id")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (!job || job.client_id !== user.id) {
+    throw new Error("You can only update your own jobs");
+  }
+
+  // Update the job status
+  const { error } = await supabase
+    .from("jobs")
+    .update({ 
+      status: newStatus,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", jobId);
+
+  if (error) {
+    console.error('[updateJobStatus] ❌ Error:', error);
+    throw new Error(error.message);
+  }
+
+  console.log('[updateJobStatus] ✅ Job status updated to:', newStatus);
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/dashboard");
 }

@@ -12,6 +12,7 @@ import { BidsList, type BidRow } from "@/components/bids/bids-list";
 import { JobImageGalleryWrapper } from "@/components/jobs/job-image-gallery-wrapper";
 import { type JobImage } from "@/components/jobs/job-image-gallery";
 import { DeleteJobButton } from "@/components/jobs/delete-job-button";
+import { JobStatusUpdater } from "@/components/jobs/job-status-updater";
 import { TomTomMap } from "@/components/maps/tomtom-map";
 
 export default async function Page({
@@ -27,7 +28,7 @@ export default async function Page({
 
   const { data: job, error: jobError } = await supabase
     .from("jobs")
-    .select("id,title,category,location,budget_range,status,client_id,description,latitude,longitude")
+    .select("id,title,category,location,latitude,longitude,budget_range,status,client_id,description,created_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -41,20 +42,30 @@ export default async function Page({
     .eq("job_id", id)
     .order("created_at", { ascending: false });
 
+  console.log("[Job Page] 📋 Job:", id, "| Bids from DB:", bids?.length ?? 0, "bids");
+  if (bids && bids.length > 0) {
+    console.log("[Job Page] 💰 Bid details:", bids.map(b => ({ id: b.id, pro_id: b.pro_id, amount: b.amount, status: b.status })));
+  }
+
   const { data: images } = await supabase
     .from("job_images")
     .select("id,job_id,storage_path,created_at")
     .eq("job_id", id)
     .order("created_at", { ascending: false });
 
-  console.log("[Job Page] Images from DB for job", id, ":", images);
+  console.log("[Job Page] 🖼️ Images from DB for job", id, ":", images?.length ?? 0, "images");
 
   const acceptedBid = (bids ?? []).find((b) => b.status === "accepted");
+  console.log("[Job Page] ✅ Accepted bid:", acceptedBid?.id ?? "none");
   
   const canBid = Boolean(user && user.id !== job.client_id && job.status === "open" && !acceptedBid);
+  console.log("[Job Page] 🎯 Can bid:", canBid, "(user:", user?.id ?? "none", "| job.client_id:", job.client_id, "| status:", job.status, "| has accepted:", !!acceptedBid, ")");
+  
   const canSeeBids = Boolean(
     user && (user.id === job.client_id || (bids ?? []).some((b) => b.pro_id === user.id))
   );
+  console.log("[Job Page] 👁️ Can see bids:", canSeeBids, "(is owner:", user?.id === job.client_id, "| is bidder:", (bids ?? []).some((b) => b.pro_id === user?.id), ")");
+  
   const isJobOwner = Boolean(user && user.id === job.client_id);
 
   return (
@@ -147,7 +158,7 @@ export default async function Page({
           </div>
         )}
 
-        {/* Map Section */}
+        {/* Map Section - Location with coordinates */}
         {job.latitude && job.longitude && (
           <div className="mt-6">
             <Card style={{ boxShadow: SHADOWS.md, backgroundColor: 'white' }}>
@@ -172,6 +183,13 @@ export default async function Page({
         {canBid && (
           <div className="mt-6">
             <BidForm action={createBid.bind(null, job.id)} />
+          </div>
+        )}
+
+        {/* Job Status Manager - Only for job owner */}
+        {isJobOwner && (
+          <div className="mt-6">
+            <JobStatusUpdater jobId={id} currentStatus={job.status as any} />
           </div>
         )}
 

@@ -146,33 +146,23 @@ export default function PostJobPage() {
       console.log('[PostJobPage] ✅ Server action completed, result:', result);
       console.log('[PostJobPage] 🎉 Job posted successfully, redirecting to browse...');
     } catch (error) {
-      console.error('[PostJobPage] ❌ Error submitting job:', error);
-      
-      // Extract error message
-      let errorMessage = 'Failed to post job. Please try again.';
-      let errorDetails: any = {};
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        errorDetails = {
-          message: error.message,
-          stack: error.stack,
-        };
-      } else if (typeof error === 'object' && error !== null) {
-        // Check for Next.js redirect error (which is expected)
-        const errorObj = error as Record<string, any>;
-        if (errorObj.digest && errorObj.digest.includes('NEXT_REDIRECT')) {
-          console.log('[PostJobPage] ✅ Redirect detected - job posting succeeded!');
-          return; // Don't show error for redirect
-        }
-        errorMessage = errorObj.message || JSON.stringify(error);
-        errorDetails = errorObj;
+      // Check for redirect first (this is success, not an error)
+      const errorString = String(error);
+      if (errorString.includes('NEXT_REDIRECT')) {
+        console.log('[PostJobPage] ✅ Job posted successfully - page redirecting');
+        return;
       }
       
-      console.error('[PostJobPage] Error details:', errorDetails);
-      setSubmitError(
-        `Failed to post job: ${errorMessage}. Please try again or contact support.`
-      );
+      let errorMessage = 'Failed to post job. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        const err = error as Record<string, any>;
+        errorMessage = err.message || 'Unknown error occurred';
+      }
+      
+      console.error('[PostJobPage] ❌ Error:', errorMessage);
+      setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
