@@ -67,6 +67,13 @@ LEFT JOIN profiles fp ON c.fundi_id = fp.id;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "conversations_view_own" ON conversations;
+DROP POLICY IF EXISTS "conversations_create_own" ON conversations;
+DROP POLICY IF EXISTS "messages_view_own" ON messages;
+DROP POLICY IF EXISTS "messages_create_own" ON messages;
+DROP POLICY IF EXISTS "messages_update_read_status" ON messages;
+
 -- Conversations: Users can see conversations they're part of
 CREATE POLICY "conversations_view_own" ON conversations FOR SELECT
   USING (auth.uid() = client_id OR auth.uid() = fundi_id);

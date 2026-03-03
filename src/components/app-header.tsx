@@ -28,6 +28,9 @@ export async function AppHeader() {
             <Link href="/post-job" className="text-sm text-muted-foreground hover:text-foreground">
               Post a Job
             </Link>
+            <Link href="/chat" className="text-sm text-muted-foreground hover:text-foreground">
+              Messages
+            </Link>
           </nav>
         </div>
 
