@@ -8,13 +8,9 @@ import { COLORS, SHADOWS } from '@/lib/design-tokens';
 import { useSupabaseClient } from '@/lib/hooks/useSupabaseClient';
 import { useRouter } from 'next/navigation';
 
-const MENU_STORAGE_KEY = 'header-menu-state';
-const PROFILE_STORAGE_KEY = 'header-profile-state';
-
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -25,44 +21,6 @@ export function Header() {
 
   // Use shared Supabase client to avoid multiple instances
   const supabase = useSupabaseClient();
-
-  // Load menu state from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedMenuState = localStorage.getItem(MENU_STORAGE_KEY);
-      const savedProfileState = localStorage.getItem(PROFILE_STORAGE_KEY);
-      
-      if (savedMenuState === 'true') {
-        setMobileMenuOpen(true);
-      }
-      if (savedProfileState === 'true') {
-        setProfileMenuOpen(true);
-      }
-    } catch (error) {
-      console.warn('[Header] Error loading menu state from localStorage:', error);
-    }
-    setIsMounted(true);
-  }, []);
-
-  // Save mobile menu state to localStorage
-  useEffect(() => {
-    if (!isMounted) return;
-    try {
-      localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(mobileMenuOpen));
-    } catch (error) {
-      console.warn('[Header] Error saving menu state to localStorage:', error);
-    }
-  }, [mobileMenuOpen, isMounted]);
-
-  // Save profile menu state to localStorage
-  useEffect(() => {
-    if (!isMounted) return;
-    try {
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileMenuOpen));
-    } catch (error) {
-      console.warn('[Header] Error saving profile state to localStorage:', error);
-    }
-  }, [profileMenuOpen, isMounted]);
 
   // Fetch user profile - memoized to avoid infinite loops
   const fetchProfile = useCallback(
