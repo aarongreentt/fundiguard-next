@@ -3,6 +3,94 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server-ssr";
 
+export async function getConversationDetails(conversationId: string) {
+  console.log('[getConversationDetails] 📋 Fetching conversation:', conversationId);
+  
+  try {
+    const supabase = await createSupabaseServerClient();
+    
+    // Get current user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.error('[getConversationDetails] ❌ No user authenticated');
+      throw new Error('Not authenticated');
+    }
+
+    console.log('[getConversationDetails] 👤 User ID:', user.id);
+
+    // Get conversation details  
+    const { data: conversation, error } = await supabase
+      .from('conversations')
+      .select('id, job_id, client_id, fundi_id, created_at')
+      .eq('id', conversationId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[getConversationDetails] ❌ Error fetching conversation:', error);
+      throw new Error(error.message);
+    }
+
+    if (!conversation) {
+      console.error('[getConversationDetails] ❌ Conversation not found');
+      throw new Error('Conversation not found');
+    }
+
+    console.log('[getConversationDetails] 📋 Conversation data:', {
+      client_id: conversation.client_id,
+      fundi_id: conversation.fundi_id,
+    });
+
+    // Check if user is part of this conversation
+    const isAuthorized = String(conversation.client_id) === String(user.id) || 
+                        String(conversation.fundi_id) === String(user.id);
+    
+    if (!isAuthorized) {
+      console.error('[getConversationDetails] ❌ User not part of this conversation');
+      throw new Error('Unauthorized');
+    }
+
+    // Get job details
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('id, title, client_id')
+      .eq('id', conversation.job_id)
+      .maybeSingle();
+
+    // Get client profile
+    const { data: client } = await supabase
+      .from('profiles')
+      .select('id, first_name, avatar_url')
+      .eq('id', conversation.client_id)
+      .maybeSingle();
+
+    // Get fundi profile
+    const { data: fundi } = await supabase
+      .from('profiles')
+      .select('id, first_name, avatar_url')
+      .eq('id', conversation.fundi_id)
+      .maybeSingle();
+
+    console.log('[getConversationDetails] ✅ Found conversation');
+    return {
+      id: conversation.id,
+      job_id: conversation.job_id,
+      client_id: conversation.client_id,
+      fundi_id: conversation.fundi_id,
+      created_at: conversation.created_at,
+      job,
+      client,
+      fundi,
+      currentUserId: user.id,
+    };
+  } catch (error) {
+    console.error('[getConversationDetails] ❌ Unexpected error:', error);
+    throw error;
+  }
+}
+
 export async function getConversations(userId: string) {
   console.log('[getConversations] 📬 Fetching conversations for user:', userId);
   

@@ -1,60 +1,96 @@
+'use client';
+
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatInterface } from '@/components/chat/chat-interface';
-import { createSupabaseServerClient } from '@/lib/supabase/server-ssr';
 import { COLORS, ANIMATIONS, SHADOWS } from '@/lib/design-tokens';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { getConversationDetails } from '@/app/actions/messages';
 
-interface ChatDetailPageProps {
-  params: Promise<{ id: string }>;
+interface Conversation {
+  id: string;
+  job_id: string;
+  client_id: string;
+  fundi_id: string;
+  created_at: string;
+  job: { id: string; title: string; client_id: string } | null;
+  client: { id: string; first_name: string; avatar_url: string | null } | null;
+  fundi: { id: string; first_name: string; avatar_url: string | null } | null;
+  currentUserId: string;
 }
 
-export default async function ChatDetailPage({ params }: ChatDetailPageProps) {
-  const { id: conversationId } = await params;
-  const supabase = await createSupabaseServerClient();
+export default function ChatDetailPage() {
+  const params = useParams();
+  const conversationId = params.id as string;
+  
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    const fetchConversation = async () => {
+      try {
+        setLoading(true);
+        const data = await getConversationDetails(conversationId);
+        setConversation(data);
+      } catch (err) {
+        console.error('Failed to fetch conversation:', err);
+        setError('Conversation not found');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (!user) {
-    return notFound();
+    if (conversationId) {
+      fetchConversation();
+    }
+  }, [conversationId]);
+
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: COLORS['bg-light'] }} className="min-h-screen py-6">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <p style={{ color: COLORS['text-muted'] }}>Loading conversation...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Get conversation details
-  const { data: conversation, error } = await supabase
-    .from('conversations')
-    .select(
-      `
-      id,
-      job_id,
-      client_id,
-      fundi_id,
-      created_at,
-      job:jobs(id, title, client_id),
-      client:profiles!client_id(id, first_name, avatar_url),
-      fundi:profiles!fundi_id(id, first_name, avatar_url)
-    `
-    )
-    .eq('id', conversationId)
-    .or(`client_id.eq.${user.id},fundi_id.eq.${user.id}`)
-    .single();
-
   if (error || !conversation) {
-    console.error('Conversation not found:', error);
-    return notFound();
+    return (
+      <div style={{ backgroundColor: COLORS['bg-light'] }} className="min-h-screen py-6">
+        <div className="max-w-2xl mx-auto px-4">
+          <Link href="/chat">
+            <Button
+              variant="ghost"
+              className="mb-4 flex items-center gap-2"
+              style={{ color: COLORS['trust-green'] }}
+            >
+              <ArrowLeft size={20} />
+              Back to Messages
+            </Button>
+          </Link>
+          <div className="text-center">
+            <p style={{ color: COLORS['text-muted'] }}>
+              {error || 'Conversation not found'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Determine other user info
-  const isUserClient = conversation.client_id === user.id;
+  const isUserClient = conversation.client_id === conversation.currentUserId;
   const otherUser = isUserClient 
-    ? (Array.isArray(conversation.fundi) ? conversation.fundi[0] : conversation.fundi)
-    : (Array.isArray(conversation.client) ? conversation.client[0] : conversation.client);
+    ? conversation.fundi
+    : conversation.client;
   const otherUserId = isUserClient ? conversation.fundi_id : conversation.client_id;
-  const jobData = Array.isArray(conversation.job) ? conversation.job[0] : conversation.job;
+  const jobData = conversation.job;
 
   return (
     <div style={{ backgroundColor: COLORS['bg-light'] }} className="min-h-screen py-6">
@@ -79,7 +115,7 @@ export default async function ChatDetailPage({ params }: ChatDetailPageProps) {
         {/* Chat Interface */}
         <ChatInterface
           conversationId={conversationId}
-          currentUserId={user.id}
+          currentUserId={conversation.currentUserId}
           otherUserName={otherUser?.first_name || 'Unknown User'}
           otherUserAvatar={otherUser?.avatar_url || undefined}
           jobTitle={jobData?.title || 'Job'}
