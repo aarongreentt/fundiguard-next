@@ -1,15 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type * as TT from '@tomtom-international/web-sdk-maps';
 import '@tomtom-international/web-sdk-maps/dist/maps.css';
 import { env } from '@/lib/env';
-
-// Dynamically import to avoid module resolution issues
-const getTT = async () => {
-  const tt = await import('@tomtom-international/web-sdk-maps');
-  return (tt as any).default || tt;
-};
+import { loadTomTomMap } from '@/lib/tomtom-loader';
+import type { TomTomModules } from '@/lib/tomtom-types';
 
 interface TomTomMapProps {
   latitude: number;
@@ -32,27 +27,23 @@ export function TomTomMap({
   const map = useRef<any>(null);
 
   useEffect(() => {
-    console.log('[TomTomMap] Rendering map with coords:', { latitude, longitude, zoom });
     if (!mapContainer.current) {
-      console.warn('[TomTomMap] No container ref available');
+      console.error('[TomTomMap] No container ref available');
       return;
     }
     if (!env.NEXT_PUBLIC_TOMTOM_API_KEY) {
-      console.error('[TomTomMap] ❌ TomTom API key not found in env');
+      console.error('[TomTomMap] TomTom API key not found in environment');
       return;
     }
-    console.log('[TomTomMap] ✅ API key found, initializing...');
 
     // Initialize map with dynamic import
     const initMap = async () => {
       try {
-        console.log('[TomTomMap] 🚀 Dynamically importing TomTom libraries...');
-        const tt = await getTT();
+        const tt = (await loadTomTomMap()) as unknown as TomTomModules;
         
-        console.log('[TomTomMap] 🗺️ Creating map instance at [', longitude, ',', latitude, ']');
         map.current = tt.map({
           key: env.NEXT_PUBLIC_TOMTOM_API_KEY!,
-          container: mapContainer.current,
+          container: mapContainer.current!,
           center: [longitude, latitude],
           zoom: zoom,
           style: 'https://api.tomtom.com/style/1/style/20.11.00-3/dusk.json',
@@ -60,10 +51,8 @@ export function TomTomMap({
           scrollZoom: interactive,
           dragPan: interactive,
         });
-        console.log('[TomTomMap] ✅ Map created successfully');
 
         // Add marker
-        console.log('[TomTomMap] 📍 Adding marker with label:', markerLabel);
         const marker = new tt.Marker({
           color: '#3B82F6', // Tailwind blue-500
         })
@@ -75,9 +64,8 @@ export function TomTomMap({
           `<div class="text-sm font-medium">${markerLabel}</div>`
         );
         marker.setPopup(popup).togglePopup();
-        console.log('[TomTomMap] ✅ Marker and popup added');
       } catch (error) {
-        console.error('Error initializing TomTom map:', error);
+        console.error('[TomTomMap] Failed to initialize map:', error instanceof Error ? error.message : 'Unknown error');
       }
     };
 

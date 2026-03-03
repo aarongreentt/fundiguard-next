@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import '@tomtom-international/web-sdk-maps/dist/maps.css';
 import { env } from '@/lib/env';
 import { calculateDistance, formatDistance } from '@/lib/geo';
+import { loadTomTomMap } from '@/lib/tomtom-loader';
+import type { TomTomModules } from '@/lib/tomtom-types';
 
 interface Job {
   id: string;
@@ -31,48 +33,26 @@ export function BrowseJobsMap({
   const map = useRef<any>(null);
   const markers = useRef<Map<string, any>>(new Map());
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [tt, setTT] = useState<any>(null);
-
-  const getTT = useCallback(async () => {
-    if (tt) return tt;
-    try {
-      const module = await import('@tomtom-international/web-sdk-maps');
-      const ttModule = (module as any).default || module;
-      setTT(ttModule);
-      return ttModule;
-    } catch (error) {
-      console.error('Error loading TomTom:', error);
-      return null;
-    }
-  }, [tt]);
 
   // Initialize map
   useEffect(() => {
-    console.log('[BrowseJobsMap] Initializing with', jobs.length, 'jobs');
     if (!mapContainer.current) {
-      console.warn('[BrowseJobsMap] No container ref');
+      console.error('[BrowseJobsMap] No container ref');
       return;
     }
     if (!env.NEXT_PUBLIC_TOMTOM_API_KEY) {
-      console.error('[BrowseJobsMap] ❌ TomTom API key not found');
+      console.error('[BrowseJobsMap] TomTom API key not found in environment');
       return;
     }
 
     const initMap = async () => {
       try {
-        console.log('[BrowseJobsMap] 🚀 Loading TomTom...');
-        const ttModule = await getTT();
-        if (!ttModule) return;
+        const ttModule = (await loadTomTomMap()) as unknown as TomTomModules;
+        if (!ttModule || jobs.length === 0) return;
 
         // Calculate bounds from all jobs
-        if (jobs.length === 0) {
-          console.warn('[BrowseJobsMap] No jobs to display on map');
-          return;
-        }
-
         const lats = jobs.map((j) => j.latitude);
         const lons = jobs.map((j) => j.longitude);
-        console.log('[BrowseJobsMap] Job coordinates: lats:', lats, 'lons:', lons);
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
         const minLon = Math.min(...lons);
@@ -82,10 +62,9 @@ export function BrowseJobsMap({
         const centerLat = (minLat + maxLat) / 2;
         const centerLon = (minLon + maxLon) / 2;
 
-        console.log('[BrowseJobsMap] 🗺️ Creating map at center [', centerLon, ',', centerLat, ']');
         map.current = ttModule.map({
           key: env.NEXT_PUBLIC_TOMTOM_API_KEY!,
-          container: mapContainer.current,
+          container: mapContainer.current!,
           center: [centerLon, centerLat],
           zoom: 12,
           style: 'https://api.tomtom.com/style/1/style/20.11.00-3/dusk.json',
@@ -93,10 +72,8 @@ export function BrowseJobsMap({
           scrollZoom: true,
           dragPan: true,
         });
-        console.log('[BrowseJobsMap] ✅ Map created');
 
         // Add markers for jobs
-        console.log('[BrowseJobsMap] 📍 Adding', jobs.length, 'markers...');
         jobs.forEach((job) => {
           const color = job.status === 'open' ? '#10b981' : '#8b5cf6'; // green for open, purple for closed
           const marker = new ttModule.Marker({
@@ -107,15 +84,13 @@ export function BrowseJobsMap({
 
           // Click marker to show job details
           marker.getElement().addEventListener('click', () => {
-            console.log('[BrowseJobsMap] Selected job:', job.id, job.title);
             setSelectedJob(job);
           });
 
           markers.current.set(job.id, marker);
         });
-        console.log('[BrowseJobsMap] ✅ All markers added');
       } catch (error) {
-        console.error('Error initializing map:', error);
+        console.error('[BrowseJobsMap] Failed to initialize map:', error instanceof Error ? error.message : 'Unknown error');
       }
     };
 
@@ -127,7 +102,7 @@ export function BrowseJobsMap({
         map.current = null;
       }
     };
-  }, [jobs, getTT]);
+  }, [jobs]);
 
   // Filter displayed jobs
   const displayedJobs = showOnlyAvailable ? jobs.filter((j) => j.status === 'open') : jobs;

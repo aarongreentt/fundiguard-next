@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import '@tomtom-international/web-sdk-maps/dist/maps.css';
 import { env } from '@/lib/env';
 import { Input } from '@/components/ui/input';
+import { loadTomTomModules } from '@/lib/tomtom-loader';
+import type { TomTomModules, ServicesModules } from '@/lib/tomtom-types';
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -14,13 +16,6 @@ interface LocationPickerProps {
   initialLocation?: { latitude: number; longitude: number };
   height?: string;
 }
-
-// Dynamically import TomTom modules to avoid module resolution issues
-const getTTModules = async () => {
-  const tt = (await import('@tomtom-international/web-sdk-maps')).default;
-  const services = (await import('@tomtom-international/web-sdk-services')).default;
-  return { tt, services };
-};
 
 export function LocationPicker({
   onLocationSelect,
@@ -38,23 +33,23 @@ export function LocationPicker({
 
   // Initialize map
   useEffect(() => {
-    console.log('[LocationPicker] Initializing location picker');
     if (!mapContainer.current) {
-      console.warn('[LocationPicker] No container ref');
+      console.error('[LocationPicker] No container ref');
       return;
     }
     if (!env.NEXT_PUBLIC_TOMTOM_API_KEY) {
-      console.error('[LocationPicker] ❌ TomTom API key not found');
+      console.error('[LocationPicker] TomTom API key not found in environment');
       return;
     }
 
     const initMap = async () => {
       try {
-        console.log('[LocationPicker] 🚀 Loading TomTom modules...');
-        const { tt: ttModule, services: servicesModule } = await getTTModules();
+        const { tt: ttModule, services: servicesModule } = (await loadTomTomModules()) as unknown as {
+          tt: TomTomModules;
+          services: ServicesModules;
+        };
         setTT(ttModule);
         setServices(servicesModule);
-        console.log('[LocationPicker] 🗺️ Creating map at [', initialLocation.longitude, ',', initialLocation.latitude, ']');
 
         map.current = ttModule.map({
           key: env.NEXT_PUBLIC_TOMTOM_API_KEY!,
@@ -66,7 +61,6 @@ export function LocationPicker({
           scrollZoom: true,
           dragPan: true,
         });
-        console.log('[LocationPicker] ✅ Map created');
 
         // Add initial marker
         marker.current = new ttModule.Marker({
@@ -98,7 +92,7 @@ export function LocationPicker({
           }
         });
       } catch (error) {
-        console.error('Error initializing TomTom:', error);
+        console.error('[LocationPicker] Failed to initialize:', error instanceof Error ? error.message : 'Unknown error');
       }
     };
 
@@ -132,7 +126,8 @@ export function LocationPicker({
         setSuggestions(response.results);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('[LocationPicker] Search failed:', error instanceof Error ? error.message : 'Unknown error');
+      setSuggestions([]);
     }
   };
 
