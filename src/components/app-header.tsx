@@ -35,6 +35,9 @@ export async function AppHeader() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link href="/chat" className="text-sm text-muted-foreground hover:text-foreground md:hidden">
+            Messages
+          </Link>
           {!user ? (
             <Button asChild variant="secondary">
               <Link href="/sign-in">Sign in</Link>
