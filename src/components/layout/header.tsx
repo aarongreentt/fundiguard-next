@@ -25,42 +25,28 @@ export function Header() {
   // Fetch user profile - memoized to avoid infinite loops
   const fetchProfile = useCallback(
     async (userId: string) => {
-      console.log('[Header] ⚡ fetchProfile called with userId:', userId);
-      
       if (!supabase) {
-        console.warn('[Header] ❌ Supabase not available');
         return;
       }
 
       try {
-        console.log('[Header] 🔍 Querying profiles table for user:', userId);
         const { data, error } = await supabase
           .from('profiles')
           .select('first_name, avatar_url')
           .eq('id', userId)
           .maybeSingle();
 
-        console.log('[Header] 📊 Query response - data:', data, 'error:', error);
-
         if (error) {
-          console.error('[Header] ❌ Error fetching profile:', error);
+          console.error('[Header] Error fetching profile:', error);
           return;
         }
 
         if (data) {
-          console.log('[Header] ✅ Profile data received:', { 
-            first_name: data.first_name, 
-            has_avatar: !!data.avatar_url, 
-            avatar_url: data.avatar_url 
-          });
           setProfileName(data.first_name);
           setProfileAvatar(data.avatar_url);
-          console.log('[Header] ✅ Profile state updated');
-        } else {
-          console.warn('[Header] ⚠️ No profile data found for user:', userId);
         }
       } catch (err) {
-        console.error('[Header] ❌ Catch error in fetchProfile:', err);
+        console.error('[Header] Error fetching profile:', err);
       }
     },
     [supabase]
@@ -68,10 +54,7 @@ export function Header() {
 
   // Check authentication status on mount and listen for changes
   useEffect(() => {
-    console.log('[Header] 🚀 useEffect started with supabase:', !!supabase);
-    
     if (!supabase) {
-      console.warn('[Header] ❌ Supabase not initialized, cannot check auth');
       setIsLoading(false);
       return;
     }
@@ -79,21 +62,15 @@ export function Header() {
     // First, get the current user
     const checkAuth = async () => {
       try {
-        console.log('[Header] 🔍 Checking current auth user...');
         const { data: { user } } = await supabase.auth.getUser();
-        console.log('[Header] ✅ Current user:', { id: user?.id, email: user?.email });
-        
         setIsAuthenticated(!!user);
         if (user) {
           setUserId(user.id);
-          console.log('[Header] 👤 User found, fetching profile for:', user.id);
           await fetchProfile(user.id);
-        } else {
-          console.log('[Header] ⚠️ No user found');
         }
         setIsLoading(false);
       } catch (error) {
-        console.warn('[Header] ❌ Error checking auth:', error);
+        console.warn('[Header] Error checking auth:', error);
         setIsAuthenticated(false);
         setIsLoading(false);
       }
@@ -102,35 +79,24 @@ export function Header() {
     checkAuth();
 
     // Listen for auth state changes
-    console.log('[Header] 👂 Setting up auth state listener...');
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Header] 🔔 Auth event:', { 
-        event, 
-        user_id: session?.user?.id, 
-        email: session?.user?.email 
-      });
-      
       if (event === "SIGNED_OUT") {
-        console.log('[Header] 👋 User signed out');
         setIsAuthenticated(false);
         setProfileName(null);
         setProfileAvatar(null);
         setUserId(null);
       } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-        console.log('[Header] 🎉 User signed in/updated');
         setIsAuthenticated(!!session?.user);
         if (session?.user) {
           setUserId(session.user.id);
-          console.log('[Header] 👤 Fetching profile for:', session.user.id);
           await fetchProfile(session.user.id);
         }
       }
     });
 
     return () => {
-      console.log('[Header] 🧹 Cleaning up auth subscription');
       subscription?.unsubscribe();
     };
   }, [supabase, fetchProfile]);
