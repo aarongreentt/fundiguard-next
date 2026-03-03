@@ -270,27 +270,73 @@ export async function getJobsWithBiddersForClient(clientId: string) {
   try {
     const supabase = await createSupabaseServerClient();
     
-    // Get jobs by this client that have bids, with bidder info
-    const { data, error } = await supabase
+    // Get jobs by this client
+    const { data: jobs, error: jobsError } = await supabase
       .from("jobs")
-      .select(`
-        id,
-        title,
-        bids:bids(
-          pro_id,
-          pro:pro_id(id, first_name, avatar_url)
-        )
-      `)
-      .eq("client_id", clientId)
-      .gt("bids.count", 0);
+      .select("id, title, client_id")
+      .eq("client_id", clientId);
 
-    if (error) {
-      console.error('[getJobsWithBiddersForClient] ❌ Error:', error);
-      throw new Error(error.message);
+    if (jobsError) {
+      console.error('[getJobsWithBiddersForClient] ❌ Error fetching jobs:', jobsError);
+      throw new Error(jobsError.message);
     }
 
-    console.log('[getJobsWithBiddersForClient] ✅ Found', data?.length || 0, 'jobs');
-    return data || [];
+    if (!jobs || jobs.length === 0) {
+      console.log('[getJobsWithBiddersForClient] ✅ No jobs found');
+      return [];
+    }
+
+    // Get all bids for these jobs
+    const jobIds = jobs.map(j => j.id);
+    const { data: bids, error: bidsError } = await supabase
+      .from("bids")
+      .select("id, job_id, pro_id")
+      .in("job_id", jobIds);
+
+    if (bidsError) {
+      console.error('[getJobsWithBiddersForClient] ❌ Error fetching bids:', bidsError);
+      throw new Error(bidsError.message);
+    }
+
+    if (!bids || bids.length === 0) {
+      console.log('[getJobsWithBiddersForClient] ✅ No bids found');
+      return [];
+    }
+
+    // Get bidder profiles
+    const bidderIds = [...new Set(bids.map(b => b.pro_id))];
+    const { data: bidders, error: biddersError } = await supabase
+      .from("profiles")
+      .select("id, first_name, avatar_url")
+      .in("id", bidderIds);
+
+    if (biddersError) {
+      console.error('[getJobsWithBiddersForClient] ❌ Error fetching bidders:', biddersError);
+      throw new Error(biddersError.message);
+    }
+
+    // Combine data - map bids to jobs
+    const enrichedJobs = (jobs || [])
+      .map(job => {
+        const jobBids = bids.filter(b => b.job_id === job.id)
+          .map(b => ({
+            pro_id: b.pro_id,
+            pro: bidders?.find(bidder => bidder.id === b.pro_id) || { 
+              id: b.pro_id, 
+              first_name: 'Unknown', 
+              avatar_url: null 
+            }
+          }));
+        
+        return {
+          ...job,
+          bids: jobBids
+        };
+      })
+      .filter(j => j.bids.length > 0); // Only return jobs with bids
+
+    console.log('[getJobsWithBiddersForClient] ✅ Found', enrichedJobs.length, 'jobs with bids');
+    return enrichedJobs;
   } catch (error) {
     console.error('[getJobsWithBiddersForClient] ❌ Unexpected error:', error);
     throw error;
