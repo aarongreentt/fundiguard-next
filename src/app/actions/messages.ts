@@ -263,3 +263,99 @@ export async function getUnreadCount(userId: string) {
     return 0;
   }
 }
+
+export async function getJobsWithBiddersForClient(clientId: string) {
+  console.log('[getJobsWithBiddersForClient] 🏢 Getting jobs with bidders for client:', clientId);
+  
+  try {
+    const supabase = await createSupabaseServerClient();
+    
+    // Get jobs by this client that have bids, with bidder info
+    const { data, error } = await supabase
+      .from("jobs")
+      .select(`
+        id,
+        title,
+        bids:bids(
+          pro_id,
+          pro:pro_id(id, first_name, avatar_url)
+        )
+      `)
+      .eq("client_id", clientId)
+      .gt("bids.count", 0);
+
+    if (error) {
+      console.error('[getJobsWithBiddersForClient] ❌ Error:', error);
+      throw new Error(error.message);
+    }
+
+    console.log('[getJobsWithBiddersForClient] ✅ Found', data?.length || 0, 'jobs');
+    return data || [];
+  } catch (error) {
+    console.error('[getJobsWithBiddersForClient] ❌ Unexpected error:', error);
+    throw error;
+  }
+}
+
+export async function getJobsWithBidsForFundi(fundiId: string) {
+  console.log('[getJobsWithBidsForFundi] 🏢 Getting jobs with bids for fundi:', fundiId);
+  
+  try {
+    const supabase = await createSupabaseServerClient();
+    
+    // Get bids by this fundi
+    const { data: bids, error: bidsError } = await supabase
+      .from("bids")
+      .select("id, job_id, pro_id")
+      .eq("pro_id", fundiId);
+
+    if (bidsError) {
+      console.error('[getJobsWithBidsForFundi] ❌ Error fetching bids:', bidsError);
+      throw new Error(bidsError.message);
+    }
+
+    if (!bids || bids.length === 0) {
+      console.log('[getJobsWithBidsForFundi] ✅ No bids found');
+      return [];
+    }
+
+    // Get jobs with their client info
+    const jobIds = bids.map(b => b.job_id);
+    const { data: jobs, error: jobsError } = await supabase
+      .from("jobs")
+      .select("id, title, client_id")
+      .in("id", jobIds);
+
+    if (jobsError) {
+      console.error('[getJobsWithBidsForFundi] ❌ Error fetching jobs:', jobsError);
+      throw new Error(jobsError.message);
+    }
+
+    // Get client profiles for each job
+    const clientIds = [...new Set(jobs?.map(j => j.client_id) || [])];
+    const { data: clients, error: clientsError } = await supabase
+      .from("profiles")
+      .select("id, first_name, avatar_url")
+      .in("id", clientIds);
+
+    if (clientsError) {
+      console.error('[getJobsWithBidsForFundi] ❌ Error fetching clients:', clientsError);
+      throw new Error(clientsError.message);
+    }
+
+    // Combine data
+    const enrichedJobs = (jobs || []).map(job => {
+      const client = clients?.find(c => c.id === job.client_id);
+      return {
+        ...job,
+        client: client || { id: job.client_id, first_name: 'Unknown', avatar_url: null }
+      };
+    });
+
+    console.log('[getJobsWithBidsForFundi] ✅ Found', enrichedJobs.length, 'jobs');
+    return enrichedJobs;
+  } catch (error) {
+    console.error('[getJobsWithBidsForFundi] ❌ Unexpected error:', error);
+    throw error;
+  }
+}
