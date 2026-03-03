@@ -109,6 +109,15 @@ export function Header() {
             Post a Job
           </Link>
           <Link
+            href="/chat"
+            className="text-sm font-medium transition-colors hover:text-blue-600"
+            style={{
+              color: isActive('/chat') ? COLORS['trust-green'] : COLORS['text-dark'],
+            }}
+          >
+            Messages
+          </Link>
+          <Link
             href="/insurance"
             className="text-sm font-medium transition-colors"
             style={{
@@ -232,6 +241,9 @@ export function Header() {
             </Link>
             <Link href="/post-job" className="px-4 py-2 hover:bg-white rounded-lg transition-colors" style={{ color: COLORS['text-dark'] }}>
               Post a Job
+            </Link>
+            <Link href="/chat" className="px-4 py-2 hover:bg-white rounded-lg transition-colors" style={{ color: COLORS['text-dark'] }}>
+              Messages
             </Link>
             <Link href="/insurance" className="px-4 py-2 hover:bg-white rounded-lg transition-colors" style={{ color: COLORS['text-dark'] }}>
               Insurance
