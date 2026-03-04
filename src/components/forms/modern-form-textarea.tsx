@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { COLORS, SHADOWS } from '@/lib/design-tokens';
+import { useFocusStyle } from '@/lib/hooks/useFocusStyle';
 
 interface ModernFormTextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -21,6 +22,10 @@ export function ModernFormTextarea({
   ...props
 }: ModernFormTextareaProps) {
   const charCount = typeof value === 'string' ? value.length : 0;
+  const fieldId = (props as any).id || props.name || 'form-textarea';
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const helperId = helperText ? `${fieldId}-helper` : undefined;
+  const { onFocus, onBlur } = useFocusStyle({ hasError: !!error });
 
   return (
     <motion.div
@@ -32,6 +37,7 @@ export function ModernFormTextarea({
     >
       {label && (
         <label
+          htmlFor={fieldId}
           className="block text-sm font-bold mb-2"
           style={{ color: COLORS['text-dark'] }}
         >
@@ -40,6 +46,7 @@ export function ModernFormTextarea({
       )}
 
       <textarea
+        id={fieldId}
         className={`w-full px-4 py-3 rounded-lg border-2 outline-none transition-all resize-none ${
           error ? 'border-red-500' : 'border-gray-200'
         } ${className}`}
@@ -51,14 +58,10 @@ export function ModernFormTextarea({
             minHeight: '120px',
         }}
         value={value}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = COLORS['trust-green'];
-          e.currentTarget.style.boxShadow = SHADOWS.md;
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = error ? '#ef4444' : '#e5e7eb';
-          e.currentTarget.style.boxShadow = error ? '' : SHADOWS.sm;
-        }}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        aria-invalid={error ? 'true' : 'false'}
+        aria-describedby={errorId || helperId}
         {...props}
       />
 
@@ -66,9 +69,11 @@ export function ModernFormTextarea({
         <div>
           {error && (
             <motion.p
+              id={errorId}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-sm text-red-500"
+              role="alert"
             >
               {error}
             </motion.p>
@@ -76,6 +81,7 @@ export function ModernFormTextarea({
 
           {helperText && !error && (
             <p
+              id={helperId}
               className="text-sm"
               style={{ color: COLORS['text-muted'] }}
             >

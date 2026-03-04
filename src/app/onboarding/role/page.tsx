@@ -58,51 +58,70 @@ export default async function Page() {
             </CardHeader>
             <CardContent className="pt-6">
               <form action={setMyRole} className="space-y-4">
-                <div
-                  style={{
-                    backgroundColor: COLORS['bg-light'],
-                    borderRadius: BORDER_RADIUS.md,
-                    border: `2px solid ${COLORS['border-light']}`,
-                    padding: '16px',
-                    cursor: 'pointer',
-                  }}
-                  className="hover:shadow-md transition-all"
-                >
-                  <Label className="flex items-center gap-3 cursor-pointer mb-0">
-                    <input type="radio" name="role" value="client" defaultChecked className="w-5 h-5" />
-                    <div>
-                      <p className="font-semibold" style={{ color: COLORS['text-dark'] }}>
-                        I want to hire
-                      </p>
-                      <p className="text-xs" style={{ color: COLORS['text-muted'] }}>
-                        Post jobs and hire trusted professionals
-                      </p>
-                    </div>
-                  </Label>
-                </div>
+                <fieldset className="space-y-4">
+                  <legend className="sr-only">Select your account type</legend>
+                  
+                  <div
+                    style={{
+                      backgroundColor: COLORS['bg-light'],
+                      borderRadius: BORDER_RADIUS.md,
+                      border: `2px solid ${COLORS['border-light']}`,
+                      padding: '16px',
+                      cursor: 'pointer',
+                    }}
+                    className="hover:shadow-md transition-all"
+                  >
+                    <Label className="flex items-center gap-3 cursor-pointer mb-0">
+                      <input 
+                        id="role-client"
+                        type="radio" 
+                        name="role" 
+                        value="client" 
+                        defaultChecked 
+                        className="w-5 h-5" 
+                        aria-describedby="role-client-description"
+                      />
+                      <div>
+                        <p className="font-semibold" style={{ color: COLORS['text-dark'] }}>
+                          I want to hire
+                        </p>
+                        <p id="role-client-description" className="text-xs" style={{ color: COLORS['text-muted'] }}>
+                          Post jobs and hire trusted professionals
+                        </p>
+                      </div>
+                    </Label>
+                  </div>
 
-                <div
-                  style={{
-                    backgroundColor: COLORS['bg-light'],
-                    borderRadius: BORDER_RADIUS.md,
-                    border: `2px solid ${COLORS['border-light']}`,
-                    padding: '16px',
-                    cursor: 'pointer',
-                  }}
-                  className="hover:shadow-md transition-all"
-                >
-                  <Label className="flex items-center gap-3 cursor-pointer mb-0">
-                    <input type="radio" name="role" value="fundi" className="w-5 h-5" />
-                    <div>
-                      <p className="font-semibold" style={{ color: COLORS['text-dark'] }}>
-                        I want to work
-                      </p>
-                      <p className="text-xs" style={{ color: COLORS['text-muted'] }}>
-                        Bid on jobs and grow your business
-                      </p>
-                    </div>
-                  </Label>
-                </div>
+                  <div
+                    style={{
+                      backgroundColor: COLORS['bg-light'],
+                      borderRadius: BORDER_RADIUS.md,
+                      border: `2px solid ${COLORS['border-light']}`,
+                      padding: '16px',
+                      cursor: 'pointer',
+                    }}
+                    className="hover:shadow-md transition-all"
+                  >
+                    <Label className="flex items-center gap-3 cursor-pointer mb-0">
+                      <input 
+                        id="role-fundi"
+                        type="radio" 
+                        name="role" 
+                        value="fundi" 
+                        className="w-5 h-5" 
+                        aria-describedby="role-fundi-description"
+                      />
+                      <div>
+                        <p className="font-semibold" style={{ color: COLORS['text-dark'] }}>
+                          I want to work
+                        </p>
+                        <p id="role-fundi-description" className="text-xs" style={{ color: COLORS['text-muted'] }}>
+                          Bid on jobs and grow your business
+                        </p>
+                      </div>
+                    </Label>
+                  </div>
+                </fieldset>
 
                 <div
                   className="pt-4"

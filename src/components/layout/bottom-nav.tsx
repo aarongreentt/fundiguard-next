@@ -25,7 +25,6 @@ export function BottomNav() {
     const checkAuth = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        console.log("[BottomNav] Current user:", user?.id);
         setIsAuthenticated(!!user);
       } catch (error) {
         console.warn('[BottomNav] Error checking auth:', error);
@@ -41,13 +40,9 @@ export function BottomNav() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[BottomNav] Auth state changed:", event, session?.user?.id);
-      
       if (event === "SIGNED_OUT") {
-        console.log("[BottomNav] User signed out");
         setIsAuthenticated(false);
       } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-        console.log("[BottomNav] User signed in/updated");
         setIsAuthenticated(!!session?.user);
       }
     });

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTransition } from "react";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export function BidForm({
   action,
@@ -35,27 +36,51 @@ export function BidForm({
       <CardContent>
         <form action={handleSubmit} className="grid gap-4">
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
               {error}
             </div>
           )}
           <div className="grid gap-2">
             <Label htmlFor="amount">Amount (KSh)</Label>
-            <Input id="amount" name="amount" type="number" min={1} required />
+            <Input 
+              id="amount" 
+              name="amount" 
+              type="number" 
+              min={1} 
+              required 
+              disabled={isPending}
+              aria-busy={isPending}
+            />
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="estimatedDays">Estimated days</Label>
-            <Input id="estimatedDays" name="estimatedDays" type="number" min={1} required />
+            <Input 
+              id="estimatedDays" 
+              name="estimatedDays" 
+              type="number" 
+              min={1} 
+              required 
+              disabled={isPending}
+              aria-busy={isPending}
+            />
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="message">Message</Label>
-            <Textarea id="message" name="message" rows={4} placeholder="Describe how you will do the job..." />
+            <Textarea 
+              id="message" 
+              name="message" 
+              rows={4} 
+              placeholder="Describe how you will do the job..." 
+              disabled={isPending}
+              aria-busy={isPending}
+            />
           </div>
 
           <div className="flex items-center justify-end">
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="flex items-center gap-2">
+              {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               {isPending ? "Submitting..." : "Submit bid"}
             </Button>
           </div>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Loader2 } from 'lucide-react';
 
 interface ServiceAreaSetupProps {
   initialLocation?: {
@@ -91,6 +92,8 @@ export function ServiceAreaSetup({
                   setRadius(Number(e.target.value));
                   setSuccess(false);
                 }}
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
                 className="max-w-xs"
               />
               <span className="text-sm text-gray-600">km</span>
@@ -101,19 +104,20 @@ export function ServiceAreaSetup({
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md" role="alert">
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md" role="status">
               <p className="text-sm text-green-800">✓ Service area updated successfully</p>
             </div>
           )}
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="flex items-center gap-2">
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {isSubmitting ? 'Saving...' : 'Save Service Area'}
             </Button>
           </div>
